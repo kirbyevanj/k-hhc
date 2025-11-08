@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "hcc_constants.hpp"
+#include "hhc_constants.hpp"
 
 namespace hhc::bench {
 

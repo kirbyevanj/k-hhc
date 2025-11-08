@@ -30,7 +30,14 @@ set_target_properties(gtest_main PROPERTIES
 )
 
 # Test executable
-add_executable(hhc_tests test_hhc.cpp)
+set(HHC_TEST_SOURCES
+    encode32_tests.cpp
+    decode32_tests.cpp
+    encode64_tests.cpp
+    decode64_tests.cpp
+    validate_tests.cpp
+)
+add_executable(hhc_tests ${HHC_TEST_SOURCES})
 target_link_libraries(hhc_tests PRIVATE hhc-cpp gtest gtest_main pthread)
 target_include_directories(hhc_tests PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/googletest-install/include

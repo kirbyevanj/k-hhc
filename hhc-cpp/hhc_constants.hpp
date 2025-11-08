@@ -1,5 +1,5 @@
-#ifndef HCC_CONSTANTS_HPP
-#define HCC_CONSTANTS_HPP
+#ifndef HHC_CONSTANTS_HPP
+#define HHC_CONSTANTS_HPP
 
 #include <array>
 #include <cstdint>

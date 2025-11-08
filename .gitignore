@@ -48,6 +48,7 @@ benchmarks/benchmark-install/
 *.gcno
 *.profdata
 *.profraw
+coverage/
 
 # Package managers
 conan/

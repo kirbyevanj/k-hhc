@@ -2,7 +2,7 @@
 
 #include "bench_utils.hpp"
 #include "hhc.hpp"
-#include "hcc_constants.hpp"
+#include "hhc_constants.hpp"
 
 #include <array>
 #include <string>

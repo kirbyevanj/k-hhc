@@ -4,7 +4,8 @@
 #include <cassert>
 #include <array>
 #include <stdexcept>
-#include "hcc_constants.hpp"
+#include "hhc_constants.hpp"
+#include <cstring>
 
 namespace hhc {
 
@@ -120,30 +121,35 @@ namespace hhc {
     /**
      * @brief Validate a string to ensure it is a valid HHC string
      * @param input_string The input string to validate
-     * @return True if the string is valid, false otherwise
+     * @return The length of the valid string, 0 if the string is invalid
      */
-    constexpr bool hhc_validate_string(const char* input_string) {
+    constexpr std::size_t hhc_validate_string(const char* input_string) {
         assert(input_string != nullptr);
+        if (*input_string == '\0') {
+            return 0;
+        }
+        const char* const start = input_string;
         while (*input_string != '\0') {
             const auto c = static_cast<unsigned char>(*input_string++);
             if (c < ALPHABET[0] || c > ALPHABET.back()) {
-                return false;
+                return 0;
             }
         }
-        return true;
+        return input_string - start;
     }
 
     /**
-     * @brief Check if a 32-bit encoded string is within the bounds of a 32-bit integer
+     * @brief Check if a string is within the bounds of a maximum string
      * @param input_string The input string to check
+     * @param max_string The maximum string to check against
      * @return True if the string is within the bounds, false otherwise
      */
-    constexpr bool hhc_32bit_bounds_check(const char* input_string) {
+    constexpr bool hhc_bounds_check(const char* input_string, const char* max_string) {
         assert(input_string != nullptr);
-        const char* max_string = HHC_32BIT_ENCODED_MAX_STRING;
+        assert(max_string != nullptr);
         while (*max_string != '\0') {
             const auto current = static_cast<unsigned char>(*input_string);
-            const auto maximum = static_cast<unsigned char>(*max_string);
+            const auto maximum = static_cast<unsigned char>(*max_string++);
             if (current < maximum) {
                 return true;
             }
@@ -153,30 +159,7 @@ namespace hhc {
             ++input_string;
             ++max_string;
         }
-        return true;
-    }
-
-    /**
-     * @brief Check if a 64-bit encoded string is within the bounds of a 64-bit integer
-     * @param input_string The input string to check
-     * @return True if the string is within the bounds, false otherwise
-     */
-    constexpr bool hhc_64bit_bounds_check(const char* input_string) {
-        assert(input_string != nullptr);
-        const char* max_string = HHC_64BIT_ENCODED_MAX_STRING;
-        while (*max_string != '\0') {
-            const auto current = static_cast<unsigned char>(*input_string);
-            const auto maximum = static_cast<unsigned char>(*max_string);
-            if (current < maximum) {
-                return true;
-            }
-            if (current > maximum) {
-                return false;
-            }
-            ++input_string;
-            ++max_string;
-        }
-        return true;
+        return false;
     }
 
     /**
@@ -187,13 +170,31 @@ namespace hhc {
      * @throws std::out_of_range if the string exceeds 32-bit bounds
      */
     constexpr uint32_t hhc_32bit_decode(const char* input_string) {
-        if (!hhc_validate_string(input_string)) {
+        if (input_string == nullptr) {
             throw std::invalid_argument("Invalid HHC string");
         }
-        if (!hhc_32bit_bounds_check(input_string)) {
+
+        const std::size_t length = hhc_validate_string(input_string);
+        if (length == 0 || length > HHC_32BIT_ENCODED_LENGTH) {
+            throw std::invalid_argument("Invalid HHC string");
+        }
+
+        if (!hhc_bounds_check(input_string, HHC_32BIT_ENCODED_MAX_STRING)) {
             throw std::out_of_range("HHC string exceeds 32-bit bounds");
         }
-        return hhc_32bit_decode_unsafe(input_string);
+
+        // If the string is not padded, pad it
+        if (length != HHC_32BIT_ENCODED_LENGTH) {
+            char padded_string[HHC_32BIT_STRING_LENGTH];
+            const std::size_t padding = HHC_32BIT_ENCODED_LENGTH - length;
+
+            std::memset(padded_string, ALPHABET[0], padding);
+            std::memcpy(padded_string + padding, input_string, length);
+
+            return hhc_32bit_decode_unsafe(padded_string);
+        }
+
+        return hhc_32bit_decode_unsafe(input_string); // Already padded
     }
 
     /**
@@ -204,13 +205,29 @@ namespace hhc {
      * @throws std::out_of_range if the string exceeds 64-bit bounds
      */
     constexpr uint64_t hhc_64bit_decode(const char* input_string) {
-        if (!hhc_validate_string(input_string)) {
+        if (input_string == nullptr) {
             throw std::invalid_argument("Invalid HHC string");
         }
-        if (!hhc_64bit_bounds_check(input_string)) {
+
+        const std::size_t length = hhc_validate_string(input_string);
+        if (length == 0 || length > HHC_64BIT_ENCODED_LENGTH) {
+            throw std::invalid_argument("Invalid HHC string");
+        }
+
+        if (!hhc_bounds_check(input_string, HHC_64BIT_ENCODED_MAX_STRING)) {
             throw std::out_of_range("HHC string exceeds 64-bit bounds");
         }
-        return hhc_64bit_decode_unsafe(input_string);
+
+        // If the string is not padded, pad it
+        if (length != HHC_64BIT_ENCODED_LENGTH) {
+            char padded_string[HHC_64BIT_STRING_LENGTH];
+            const std::size_t padding = HHC_64BIT_ENCODED_LENGTH - length;
+            std::memset(padded_string, ALPHABET[0], padding);
+            std::memcpy(padded_string + padding, input_string, length);
+            return hhc_64bit_decode_unsafe(padded_string);
+        }
+
+        return hhc_64bit_decode_unsafe(input_string); // Already padded
     }
 } // namespace hhc
 
