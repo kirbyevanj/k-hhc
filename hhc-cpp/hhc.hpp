@@ -5,12 +5,8 @@
 #include <array>
 #include <cstdio>
 #include "hcc_constants.hpp"
-#define BASE 66
 
 namespace hhc {
-    constexpr uint32_t BITS_PER_BYTE = 8;
-    constexpr size_t HHC_32BIT_ENCODED_LENGTH = 6;
-    constexpr size_t HHC_64BIT_ENCODED_LENGTH = 11;
 
     /**
      * @brief Encode a 32-bit integer into a 6-character string
@@ -67,7 +63,7 @@ namespace hhc {
         uint32_t exponent = 1;
 
         for (uint32_t pos = HHC_32BIT_ENCODED_LENGTH; pos > 0; --pos) {
-            const uint32_t index = INVERSE_ALPHABET[static_cast<unsigned char>(input_string[pos-1])];
+            const uint32_t index = INVERSE_ALPHABET[input_string[pos-1]];
             output += index * exponent;
             exponent *= BASE;
         }
@@ -92,6 +88,19 @@ namespace hhc {
     }
 
     /**
+     * @brief Encode a 64-bit integer into a 11-character string without padding
+     * @note The output string is not null-terminated
+     * @note This version is slower because it needs to unpad the string
+     * @param input The 64-bit integer to encode
+     * @param output_string The output string to write the encoded result to
+     */
+    constexpr void hhc_64bit_encode_unpadded(uint64_t input, char* output_string) {
+        assert(output_string != nullptr);
+        hhc_64bit_encode_padded(input, output_string);
+        hhc_unpad_string(output_string);
+    }
+
+    /**
      * @brief Decode a 64-bit integer from a 11-character string
      * @param input_string The input string to decode
      * @return The decoded 64-bit integer
@@ -101,7 +110,7 @@ namespace hhc {
         uint64_t output = 0;
         uint64_t exponent = 1;
         for (uint32_t pos = HHC_64BIT_ENCODED_LENGTH; pos > 0; --pos) {
-            const uint32_t index = INVERSE_ALPHABET[static_cast<unsigned char>(input_string[pos-1])];
+            const uint32_t index = INVERSE_ALPHABET[input_string[pos-1]];
             output += static_cast<uint64_t>(index) * exponent;
             exponent *= BASE;
         }

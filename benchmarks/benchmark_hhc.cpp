@@ -30,6 +30,9 @@ struct Permuted32 {
 using std::string;
 using hhc::HHC_32BIT_ENCODED_LENGTH;
 using hhc::HHC_64BIT_ENCODED_LENGTH;
+using hhc::HHC_32BIT_STRING_LENGTH;
+using hhc::HHC_64BIT_STRING_LENGTH;
+using hhc::BASE;
 
 // Benchmark for hhc_32bit_encode
 static void BM_hhc32BitEncodePadded(benchmark::State& state) {
@@ -38,6 +41,7 @@ static void BM_hhc32BitEncodePadded(benchmark::State& state) {
     for (auto& input : inputs) {
         input = permuted32.next();
     }
+
     uint32_t i = 0;
     for (auto _ : state) {
         string output(8, 0);
@@ -55,6 +59,7 @@ static void BM_hhc32BitEncodeUnpadded(benchmark::State& state) {
     for (auto& input : inputs) {
         input = permuted32.next();
     }
+
     uint32_t i = 0;
     for (auto _ : state) {
         string output(8, 0);
@@ -72,6 +77,7 @@ static void BM_hhc32BitDecode(benchmark::State& state) {
     for (int i = 0; i < 6; i++) {
         input[i] = hhc::ALPHABET[rand() % BASE];
     }
+
     const uint32_t index = 0;
     for (auto _ : state) {
 
@@ -88,6 +94,7 @@ static void BM_hhc64BitEncodePadded(benchmark::State& state) {
     for (auto& input : inputs) {
         input = permuted32.next();
     }
+
     uint32_t i = 0;
     for (auto _ : state) {
         string output(HHC_64BIT_ENCODED_LENGTH+2, 0);
@@ -97,11 +104,29 @@ static void BM_hhc64BitEncodePadded(benchmark::State& state) {
 }
 BENCHMARK(BM_hhc64BitEncodePadded);
 
+
+static void BM_hhc64BitEncodeUnpadded(benchmark::State& state) {
+    Permuted32 permuted32(rand());
+    array<uint64_t, 2 << 16> inputs;
+    for (auto& input : inputs) {
+        input = permuted32.next();
+    }
+
+    uint32_t i = 0;
+    for (auto _ : state) {
+        string output(HHC_64BIT_ENCODED_LENGTH+2, 0);
+        hhc::hhc_64bit_encode_unpadded(inputs[++i & (inputs.size() - 1)], output.data());
+        benchmark::DoNotOptimize(output);
+    }
+}
+BENCHMARK(BM_hhc64BitEncodeUnpadded);
+
 static void BM_hhc64BitDecode(benchmark::State& state) {
     string input(HHC_64BIT_ENCODED_LENGTH+2, 0);
     for (int i = 0; i < HHC_64BIT_ENCODED_LENGTH+2; i++) {
         input[i] = hhc::ALPHABET[rand() % BASE];
     }
+    
     const uint32_t index = 0;
     for (auto _ : state) {
         uint64_t output = hhc::hhc_64bit_decode(input.c_str() + index);
@@ -109,6 +134,7 @@ static void BM_hhc64BitDecode(benchmark::State& state) {
     }
 }
 BENCHMARK(BM_hhc64BitDecode);
+
 
 static void HM_rand32Bit(benchmark::State& state) {
     for (auto _ : state) {

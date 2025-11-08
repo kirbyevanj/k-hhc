@@ -11,20 +11,23 @@ constexpr auto U64_MIN = std::numeric_limits<uint64_t>::min();
 using hhc::hhc_32bit_encode_padded;
 using hhc::hhc_32bit_decode;
 using hhc::hhc_64bit_encode_padded;
+using hhc::hhc_64bit_encode_unpadded;
 using hhc::hhc_64bit_decode;
 using hhc::HHC_32BIT_ENCODED_LENGTH;
 using hhc::HHC_64BIT_ENCODED_LENGTH;
+using hhc::HHC_32BIT_STRING_LENGTH;
+using hhc::HHC_64BIT_STRING_LENGTH;
 using std::string;
 
 // Test for hhc_32bit_encode
 TEST(HhcTest, Encode32BitTestUINT32_MIN) {
-    string output(HHC_32BIT_ENCODED_LENGTH+2, '\0');
+    string output(HHC_32BIT_STRING_LENGTH, '\0');
     hhc_32bit_encode_padded(U32_MIN, output.data());
     EXPECT_STREQ(output.c_str(), "------");
 }
 
 TEST(HhcTest, Encode32BitTestUINT32_MAX) {
-    string output(HHC_32BIT_ENCODED_LENGTH+2, '\0');
+    string output(HHC_32BIT_STRING_LENGTH, '\0');
     hhc_32bit_encode_padded(U32_MAX, output.data());
     EXPECT_STREQ(output.c_str(), "1QLCp1");
 }
@@ -44,7 +47,7 @@ TEST(HhcTest, Decode32BitTestUINT32_MAX) {
 
 TEST(HhcTest, RoundTrip32BitTestFirst1Million) {
     for (uint32_t i = 0; i < 1000000; i++) {
-        string output(HHC_32BIT_ENCODED_LENGTH+1, 0);
+        string output(HHC_32BIT_STRING_LENGTH, 0);
         hhc_32bit_encode_padded(i, output.data());
         auto decoded = hhc_32bit_decode(output.data());
         ASSERT_EQ(decoded, i);
@@ -58,13 +61,13 @@ TEST(HhcTest, Encode64BitTestUINT64_MIN) {
 }
 
 TEST(HhcTest, Encode64BitTestUINT64_MAX) {
-    string output(HHC_64BIT_ENCODED_LENGTH+2, '\0');
+    string output(HHC_64BIT_STRING_LENGTH, '\0');
     hhc_64bit_encode_padded(U64_MAX, output.data());
     EXPECT_EQ(output.substr(0, HHC_64BIT_ENCODED_LENGTH), "9lH9ebONzYD");
 }
 
 TEST(HhcTest, Decode64BitTestUINT64_MIN) {
-    string input(HHC_64BIT_ENCODED_LENGTH, '-');
+    string input(HHC_64BIT_STRING_LENGTH, '-');
     auto output = hhc_64bit_decode(input.c_str());
     EXPECT_EQ(output, U64_MIN);
 }

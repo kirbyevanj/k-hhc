@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstddef>
 
 namespace hhc {
     constexpr uint32_t BASE = 66;
@@ -26,6 +27,12 @@ namespace hhc {
         return inverse_alphabet;
     }
     constexpr auto INVERSE_ALPHABET = make_hhc_inverse_alphabet();
+
+    constexpr uint32_t BITS_PER_BYTE = 8;
+    constexpr size_t HHC_32BIT_STRING_LENGTH = 8;
+    constexpr size_t HHC_64BIT_STRING_LENGTH = 16;
+    constexpr size_t HHC_32BIT_ENCODED_LENGTH = 6;
+    constexpr size_t HHC_64BIT_ENCODED_LENGTH = 11;
 
 } // namespace hhc
 
