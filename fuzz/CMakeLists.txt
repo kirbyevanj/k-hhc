@@ -5,7 +5,7 @@ endif()
 
 set(_hhc_fuzz_flags -fsanitize=fuzzer,address -fno-omit-frame-pointer -g)
 
-foreach(_fuzzer IN ITEMS hhc_fuzz_32 hhc_fuzz_64)
+foreach(_fuzzer IN ITEMS hhc_fuzz_decode32 hhc_fuzz_decode64)
     add_executable(${_fuzzer} ${_fuzzer}.cpp)
     target_link_libraries(${_fuzzer} PRIVATE hhc-cpp)
     target_compile_options(${_fuzzer} PRIVATE ${_hhc_fuzz_flags})

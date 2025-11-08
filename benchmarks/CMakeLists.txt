@@ -32,7 +32,16 @@ set_target_properties(benchmark_main PROPERTIES
 )
 
 # Benchmark executable
-add_executable(hhc_benchmarks benchmark_hhc.cpp)
+set(HHC_BENCH_SOURCES
+    encode32_bench.cpp
+    encode64_bench.cpp
+    decode32_bench.cpp
+    decode64_bench.cpp
+    validate_bench.cpp
+    extras_bench.cpp
+    main.cpp
+)
+add_executable(hhc_benchmarks ${HHC_BENCH_SOURCES})
 target_link_libraries(hhc_benchmarks PRIVATE hhc-cpp benchmark_lib benchmark_main pthread)
 target_include_directories(hhc_benchmarks PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/include

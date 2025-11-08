@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cassert>
 #include <array>
+#include <stdexcept>
 #include "hcc_constants.hpp"
 
 namespace hhc {
@@ -56,7 +57,7 @@ namespace hhc {
      * @param input_string The input string to decode
      * @return The decoded 32-bit integer
      */
-    constexpr uint32_t hhc_32bit_decode(const char* input_string) {
+    constexpr uint32_t hhc_32bit_decode_unsafe(const char* input_string) {
         assert(input_string != nullptr);
         uint32_t output = 0;
         uint32_t exponent = 1;
@@ -104,7 +105,7 @@ namespace hhc {
      * @param input_string The input string to decode
      * @return The decoded 64-bit integer
      */
-    constexpr uint64_t hhc_64bit_decode(const char* input_string) {
+    constexpr uint64_t hhc_64bit_decode_unsafe(const char* input_string) {
         assert(input_string != nullptr);
         uint64_t output = 0;
         uint64_t exponent = 1;
@@ -176,6 +177,40 @@ namespace hhc {
             ++max_string;
         }
         return true;
+    }
+
+    /**
+     * @brief Decode a 32-bit integer from a 6-character string
+     * @param input_string The input string to decode
+     * @return The decoded 32-bit integer
+     * @throws std::invalid_argument if the string is invalid
+     * @throws std::out_of_range if the string exceeds 32-bit bounds
+     */
+    constexpr uint32_t hhc_32bit_decode(const char* input_string) {
+        if (!hhc_validate_string(input_string)) {
+            throw std::invalid_argument("Invalid HHC string");
+        }
+        if (!hhc_32bit_bounds_check(input_string)) {
+            throw std::out_of_range("HHC string exceeds 32-bit bounds");
+        }
+        return hhc_32bit_decode_unsafe(input_string);
+    }
+
+    /**
+     * @brief Decode a 64-bit integer from a 11-character string
+     * @param input_string The input string to decode
+     * @return The decoded 64-bit integer
+     * @throws std::invalid_argument if the string is invalid
+     * @throws std::out_of_range if the string exceeds 64-bit bounds
+     */
+    constexpr uint64_t hhc_64bit_decode(const char* input_string) {
+        if (!hhc_validate_string(input_string)) {
+            throw std::invalid_argument("Invalid HHC string");
+        }
+        if (!hhc_64bit_bounds_check(input_string)) {
+            throw std::out_of_range("HHC string exceeds 64-bit bounds");
+        }
+        return hhc_64bit_decode_unsafe(input_string);
     }
 } // namespace hhc
 

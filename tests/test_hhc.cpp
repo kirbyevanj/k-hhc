@@ -3,15 +3,18 @@
 #include <string>
 #include <limits>
 #include <cstdint>
+#include <stdexcept>
 
 constexpr auto U32_MAX  = std::numeric_limits<uint32_t>::max();
 constexpr auto U32_MIN  = std::numeric_limits<uint32_t>::min();
 constexpr auto U64_MAX = std::numeric_limits<uint64_t>::max();
 constexpr auto U64_MIN = std::numeric_limits<uint64_t>::min();
 using hhc::hhc_32bit_encode_padded;
+using hhc::hhc_32bit_decode_unsafe;
 using hhc::hhc_32bit_decode;
 using hhc::hhc_64bit_encode_padded;
 using hhc::hhc_64bit_encode_unpadded;
+using hhc::hhc_64bit_decode_unsafe;
 using hhc::hhc_64bit_decode;
 using hhc::hhc_validate_string;
 using hhc::hhc_32bit_bounds_check;
@@ -38,23 +41,42 @@ TEST(HhcTest, Encode32BitTestUINT32_MAX) {
 }
 
 // Test for hhc_32bit_decode
-TEST(HhcTest, Decode32BitTestUINT32_MIN) {
+TEST(HhcTest, Decode32BitUnsafeTestUINT32_MIN) {
     const string input = "------\0\0";
-    auto output = hhc_32bit_decode(input.data());
+    auto output = hhc_32bit_decode_unsafe(input.data());
     EXPECT_EQ(output, U32_MIN);
 }
 
-TEST(HhcTest, Decode32BitTestUINT32_MAX) {
+TEST(HhcTest, Decode32BitUnsafeTestUINT32_MAX) {
     const string input = "1QLCp1\0\0";
-    auto output = hhc_32bit_decode(input.data());
+    auto output = hhc_32bit_decode_unsafe(input.data());
     EXPECT_EQ(output, U32_MAX);
+}
+
+TEST(HhcTest, Decode32BitSafeReturnsValue) {
+    string encoded(HHC_32BIT_STRING_LENGTH, '\0');
+    hhc_32bit_encode_padded(424242U, encoded.data());
+    encoded.resize(HHC_32BIT_ENCODED_LENGTH);
+    auto decoded = hhc_32bit_decode(encoded.c_str());
+    EXPECT_EQ(decoded, 424242U);
+}
+
+TEST(HhcTest, Decode32BitSafeThrowsOnInvalidCharacters) {
+    const string input = "1QLCP!";
+    EXPECT_THROW(hhc_32bit_decode(input.c_str()), std::invalid_argument);
+}
+
+TEST(HhcTest, Decode32BitSafeThrowsOnOutOfRange) {
+    string input = HHC_32BIT_ENCODED_MAX_STRING;
+    input.back() = '2';
+    EXPECT_THROW(hhc_32bit_decode(input.c_str()), std::out_of_range);
 }
 
 TEST(HhcTest, RoundTrip32BitTestFirst1Million) {
     for (uint32_t i = 0; i < 1000000; i++) {
         string output(HHC_32BIT_STRING_LENGTH, 0);
         hhc_32bit_encode_padded(i, output.data());
-        auto decoded = hhc_32bit_decode(output.data());
+        auto decoded = hhc_32bit_decode_unsafe(output.data());
         ASSERT_EQ(decoded, i);
     }
 }
@@ -71,16 +93,35 @@ TEST(HhcTest, Encode64BitTestUINT64_MAX) {
     EXPECT_EQ(output.substr(0, HHC_64BIT_ENCODED_LENGTH), "9lH9ebONzYD");
 }
 
-TEST(HhcTest, Decode64BitTestUINT64_MIN) {
+TEST(HhcTest, Decode64BitUnsafeTestUINT64_MIN) {
     string input(HHC_64BIT_STRING_LENGTH, '-');
-    auto output = hhc_64bit_decode(input.c_str());
+    auto output = hhc_64bit_decode_unsafe(input.c_str());
     EXPECT_EQ(output, U64_MIN);
 }
 
-TEST(HhcTest, Decode64BitTestUINT64_MAX) {
+TEST(HhcTest, Decode64BitUnsafeTestUINT64_MAX) {
     const string input = "9lH9ebONzYD";
-    auto output = hhc_64bit_decode(input.c_str());
+    auto output = hhc_64bit_decode_unsafe(input.c_str());
     EXPECT_EQ(output, U64_MAX);
+}
+
+TEST(HhcTest, Decode64BitSafeReturnsValue) {
+    string encoded(HHC_64BIT_STRING_LENGTH, '\0');
+    hhc_64bit_encode_padded(9876543210ULL, encoded.data());
+    encoded.resize(HHC_64BIT_ENCODED_LENGTH);
+    auto decoded = hhc_64bit_decode(encoded.c_str());
+    EXPECT_EQ(decoded, 9876543210ULL);
+}
+
+TEST(HhcTest, Decode64BitSafeThrowsOnInvalidCharacters) {
+    const string input = "9lH9ebONz!D";
+    EXPECT_THROW(hhc_64bit_decode(input.c_str()), std::invalid_argument);
+}
+
+TEST(HhcTest, Decode64BitSafeThrowsOnOutOfRange) {
+    string input = HHC_64BIT_ENCODED_MAX_STRING;
+    input.back() = '~';
+    EXPECT_THROW(hhc_64bit_decode(input.c_str()), std::out_of_range);
 }
 
 TEST(HhcTest, ValidateStringAcceptsAlphabetCharacters) {
@@ -127,7 +168,7 @@ TEST(HhcTest, RoundTrip64BitTestFirst1Million) {
     for (uint64_t i = 0; i < 1000000; i++) {
         string output(HHC_64BIT_ENCODED_LENGTH+1, 0);
         hhc_64bit_encode_padded(i, output.data());
-        auto decoded = hhc_64bit_decode(output.data());
+        auto decoded = hhc_64bit_decode_unsafe(output.data());
         ASSERT_EQ(decoded, i);
     }
 }
