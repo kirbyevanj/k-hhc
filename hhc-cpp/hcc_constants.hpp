@@ -33,7 +33,8 @@ namespace hhc {
     constexpr size_t HHC_64BIT_STRING_LENGTH = 16;
     constexpr size_t HHC_32BIT_ENCODED_LENGTH = 6;
     constexpr size_t HHC_64BIT_ENCODED_LENGTH = 11;
-
+    constexpr auto HHC_32BIT_ENCODED_MAX_STRING = "1QLCp1";
+    constexpr auto HHC_64BIT_ENCODED_MAX_STRING = "9lH9ebONzYD";
 } // namespace hhc
 
 #endif

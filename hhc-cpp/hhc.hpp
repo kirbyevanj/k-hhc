@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <cassert>
 #include <array>
-#include <cstdio>
 #include "hcc_constants.hpp"
 
 namespace hhc {
@@ -115,6 +114,68 @@ namespace hhc {
             exponent *= BASE;
         }
         return output;
+    }
+
+    /**
+     * @brief Validate a string to ensure it is a valid HHC string
+     * @param input_string The input string to validate
+     * @return True if the string is valid, false otherwise
+     */
+    constexpr bool hhc_validate_string(const char* input_string) {
+        assert(input_string != nullptr);
+        while (*input_string != '\0') {
+            const auto c = static_cast<unsigned char>(*input_string++);
+            if (c < ALPHABET[0] || c > ALPHABET.back()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @brief Check if a 32-bit encoded string is within the bounds of a 32-bit integer
+     * @param input_string The input string to check
+     * @return True if the string is within the bounds, false otherwise
+     */
+    constexpr bool hhc_32bit_bounds_check(const char* input_string) {
+        assert(input_string != nullptr);
+        const char* max_string = HHC_32BIT_ENCODED_MAX_STRING;
+        while (*max_string != '\0') {
+            const auto current = static_cast<unsigned char>(*input_string);
+            const auto maximum = static_cast<unsigned char>(*max_string);
+            if (current < maximum) {
+                return true;
+            }
+            if (current > maximum) {
+                return false;
+            }
+            ++input_string;
+            ++max_string;
+        }
+        return true;
+    }
+
+    /**
+     * @brief Check if a 64-bit encoded string is within the bounds of a 64-bit integer
+     * @param input_string The input string to check
+     * @return True if the string is within the bounds, false otherwise
+     */
+    constexpr bool hhc_64bit_bounds_check(const char* input_string) {
+        assert(input_string != nullptr);
+        const char* max_string = HHC_64BIT_ENCODED_MAX_STRING;
+        while (*max_string != '\0') {
+            const auto current = static_cast<unsigned char>(*input_string);
+            const auto maximum = static_cast<unsigned char>(*max_string);
+            if (current < maximum) {
+                return true;
+            }
+            if (current > maximum) {
+                return false;
+            }
+            ++input_string;
+            ++max_string;
+        }
+        return true;
     }
 } // namespace hhc
 

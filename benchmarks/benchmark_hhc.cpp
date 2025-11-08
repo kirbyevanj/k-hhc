@@ -123,10 +123,10 @@ BENCHMARK(BM_hhc64BitEncodeUnpadded);
 
 static void BM_hhc64BitDecode(benchmark::State& state) {
     string input(HHC_64BIT_ENCODED_LENGTH+2, 0);
-    for (int i = 0; i < HHC_64BIT_ENCODED_LENGTH+2; i++) {
+    for (size_t i = 0; i < input.size(); i++) {
         input[i] = hhc::ALPHABET[rand() % BASE];
     }
-    
+
     const uint32_t index = 0;
     for (auto _ : state) {
         uint64_t output = hhc::hhc_64bit_decode(input.c_str() + index);
@@ -135,6 +135,46 @@ static void BM_hhc64BitDecode(benchmark::State& state) {
 }
 BENCHMARK(BM_hhc64BitDecode);
 
+
+static void BM_hhcValidateString32(benchmark::State& state) {
+    Permuted32 permuted32(rand());
+    std::array<string, 1U << 9> inputs{};
+    for (auto& str : inputs) {
+        str.resize(HHC_32BIT_STRING_LENGTH);
+        for (auto& ch : str) {
+            ch = hhc::ALPHABET[permuted32.next() % BASE];
+        }
+    }
+    
+    size_t idx = 0;
+    const size_t mask = inputs.size() - 1;
+    for (auto _ : state) {
+        const auto& current = inputs[idx++ & mask];
+        bool output = hhc::hhc_validate_string(current.c_str());
+        benchmark::DoNotOptimize(output);
+    }
+}
+BENCHMARK(BM_hhcValidateString32);
+
+static void BM_hhcValidateString64(benchmark::State& state) {
+    Permuted32 permuted32(rand());
+    std::array<string, 1U << 9> inputs{};
+    for (auto& str : inputs) {
+        str.resize(HHC_64BIT_STRING_LENGTH);
+        for (auto& ch : str) {
+            ch = hhc::ALPHABET[permuted32.next() % BASE];
+        }
+    }
+
+    size_t idx = 0;
+    const size_t mask = inputs.size() - 1;
+    for (auto _ : state) {
+        const auto& current = inputs[idx++ & mask];
+        bool output = hhc::hhc_validate_string(current.c_str());
+        benchmark::DoNotOptimize(output);
+    }
+}
+BENCHMARK(BM_hhcValidateString64);
 
 static void HM_rand32Bit(benchmark::State& state) {
     for (auto _ : state) {

@@ -13,10 +13,15 @@ using hhc::hhc_32bit_decode;
 using hhc::hhc_64bit_encode_padded;
 using hhc::hhc_64bit_encode_unpadded;
 using hhc::hhc_64bit_decode;
+using hhc::hhc_validate_string;
+using hhc::hhc_32bit_bounds_check;
+using hhc::hhc_64bit_bounds_check;
 using hhc::HHC_32BIT_ENCODED_LENGTH;
 using hhc::HHC_64BIT_ENCODED_LENGTH;
 using hhc::HHC_32BIT_STRING_LENGTH;
 using hhc::HHC_64BIT_STRING_LENGTH;
+using hhc::HHC_32BIT_ENCODED_MAX_STRING;
+using hhc::HHC_64BIT_ENCODED_MAX_STRING;
 using std::string;
 
 // Test for hhc_32bit_encode
@@ -76,6 +81,46 @@ TEST(HhcTest, Decode64BitTestUINT64_MAX) {
     const string input = "9lH9ebONzYD";
     auto output = hhc_64bit_decode(input.c_str());
     EXPECT_EQ(output, U64_MAX);
+}
+
+TEST(HhcTest, ValidateStringAcceptsAlphabetCharacters) {
+    const string input = "1QLCp1";
+    EXPECT_TRUE(hhc_validate_string(input.c_str()));
+}
+
+TEST(HhcTest, ValidateStringRejectsNonAlphabetCharacters) {
+    const string input = "1QLCp!";
+    EXPECT_FALSE(hhc_validate_string(input.c_str()));
+}
+
+TEST(HhcTest, BoundsCheck32BitBelowMaxReturnsTrue) {
+    string candidate = HHC_32BIT_ENCODED_MAX_STRING;
+    candidate.back() = '0';
+    EXPECT_TRUE(hhc_32bit_bounds_check(candidate.c_str()));
+}
+
+TEST(HhcTest, BoundsCheck32BitAtOrAboveMaxReturnsFalse) {
+    string candidate_equal = HHC_32BIT_ENCODED_MAX_STRING;
+    EXPECT_TRUE(hhc_32bit_bounds_check(candidate_equal.c_str()));
+
+    string candidate_above = HHC_32BIT_ENCODED_MAX_STRING;
+    candidate_above.back() = '2';
+    EXPECT_FALSE(hhc_32bit_bounds_check(candidate_above.c_str()));
+}
+
+TEST(HhcTest, BoundsCheck64BitBelowMaxReturnsTrue) {
+    string candidate = HHC_64BIT_ENCODED_MAX_STRING;
+    candidate.back() = 'C';
+    EXPECT_TRUE(hhc_64bit_bounds_check(candidate.c_str()));
+}
+
+TEST(HhcTest, BoundsCheck64BitAtOrAboveMaxReturnsFalse) {
+    string candidate_equal = HHC_64BIT_ENCODED_MAX_STRING;
+    EXPECT_TRUE(hhc_64bit_bounds_check(candidate_equal.c_str()));
+
+    string candidate_above = HHC_64BIT_ENCODED_MAX_STRING;
+    candidate_above.back() = 'E';
+    EXPECT_FALSE(hhc_64bit_bounds_check(candidate_above.c_str()));
 }
 
 TEST(HhcTest, RoundTrip64BitTestFirst1Million) {
