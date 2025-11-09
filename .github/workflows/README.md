@@ -7,17 +7,35 @@ This directory contains CI/CD workflows for the HHC C++ library.
 ### 1. CI (`ci.yml`)
 **Triggers:** Push to master/develop, Pull Requests
 
-Comprehensive continuous integration workflow that:
-- **Builds and tests** on multiple platforms (Ubuntu, macOS) and architectures (AMD64, ARM64)
-- **Runs linting** with clang-tidy
-- **Executes benchmarks** on both architectures
-- **Generates code coverage** reports and uploads to Codecov
-- **Runs C++ examples** to verify functionality
+Comprehensive continuous integration workflow with staged execution:
 
-**Matrix:**
-- OS: Ubuntu (latest), macOS (latest)
-- Architecture: AMD64, ARM64
-- Compiler: Clang
+**Stage 1: Lint** (must pass to continue)
+- Runs clang-tidy on all source files
+- Fast feedback on code quality issues
+
+**Stage 2: Build & Test** (runs after lint passes)
+- Builds and tests on multiple platforms and architectures
+- Uses native ARM64 runners (no QEMU emulation)
+- Runs C++ examples to verify functionality
+
+**Stage 3: Benchmarks** (runs after build & test passes)
+- Executes performance benchmarks
+- Runs on Ubuntu AMD64 and ARM64
+
+**Stage 4: Coverage** (runs after benchmarks pass)
+- Generates code coverage reports
+- Uploads to Codecov
+
+**Platforms:**
+- Ubuntu AMD64: `ubuntu-latest`
+- Ubuntu ARM64: `ubuntu-24.04-arm` (native runner)
+- macOS AMD64: `macos-13` (Intel)
+- macOS ARM64: `macos-14` (Apple Silicon)
+
+**Architecture Support:**
+- All builds use native runners (no QEMU emulation)
+- ARM64 on Linux uses GitHub's ARM64 hosted runners
+- ARM64 on macOS uses Apple Silicon runners
 
 ### 2. Python Package (`python.yml`)
 **Triggers:** Push to master/develop, Pull Requests, Tags (v*)
@@ -75,12 +93,17 @@ Configure trusted publishing in your PyPI project settings:
 
 ## Architecture Support
 
-All workflows support both AMD64 and ARM64 architectures:
+All workflows support both AMD64 and ARM64 architectures using native runners:
 
-- **AMD64 (x86_64)**: Native execution on GitHub-hosted runners
+- **AMD64 (x86_64)**: 
+  - Linux: `ubuntu-latest` (native)
+  - macOS: `macos-13` (Intel, native)
+  
 - **ARM64 (aarch64)**: 
-  - Linux: Uses QEMU with `uraimo/run-on-arch-action`
-  - macOS: Native execution on Apple Silicon runners (when available)
+  - Linux: `ubuntu-24.04-arm` (GitHub ARM64 hosted runners, native)
+  - macOS: `macos-14` (Apple Silicon, native)
+
+**Note:** All builds run natively on their respective architectures. QEMU emulation is NOT used.
 
 ## Local Testing
 
@@ -129,8 +152,11 @@ Add these to your README.md:
 
 ## Troubleshooting
 
-### ARM64 builds are slow
-ARM64 builds on Linux use QEMU emulation, which is slower than native execution. This is expected.
+### ARM64 builds
+ARM64 builds now use native GitHub-hosted ARM64 runners. If you experience issues:
+- Verify `ubuntu-24.04-arm` runner is available in your repository
+- Check GitHub Actions billing/quota for ARM64 minutes
+- For private repositories, ARM64 runners may require GitHub Team or Enterprise
 
 ### Python wheel build fails
 - Check that C++23 is properly supported

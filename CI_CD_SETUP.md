@@ -71,15 +71,22 @@ The project now has a comprehensive CI/CD pipeline supporting:
 
 ## Architecture Support
 
+All builds use native runners - no QEMU emulation.
+
 ### AMD64 (x86_64)
-- **Linux**: Native execution on GitHub runners
-- **macOS**: Native execution on GitHub runners
-- **Windows**: Native execution on GitHub runners
+- **Linux**: `ubuntu-latest` - Native execution
+- **macOS**: `macos-13` (Intel) - Native execution
+- **Windows**: Not tested in CI (header-only library should work)
 
 ### ARM64 (aarch64)
-- **Linux**: QEMU emulation via `uraimo/run-on-arch-action`
-- **macOS**: Native execution on Apple Silicon runners
+- **Linux**: `ubuntu-24.04-arm` - Native GitHub-hosted ARM64 runners
+- **macOS**: `macos-14` (Apple Silicon) - Native execution
 - **Windows**: Not supported (no ARM64 runners available)
+
+**Important Notes:**
+- ARM64 Linux runners require GitHub Team or Enterprise for private repositories
+- Public repositories have access to ARM64 runners
+- ARM64 builds are now as fast as AMD64 builds (native execution)
 
 ## Workflow Triggers
 
@@ -224,8 +231,12 @@ cibuildwheel --platform linux
 
 ## Troubleshooting
 
-### ARM64 Builds Are Slow
-This is expected. ARM64 builds on Linux use QEMU emulation, which is significantly slower than native execution.
+### ARM64 Runner Availability
+ARM64 builds use native GitHub-hosted runners (`ubuntu-24.04-arm`). If builds fail:
+- Verify runner availability in your repository settings
+- For private repositories, ensure you have GitHub Team or Enterprise plan
+- Check Actions billing for ARM64 minute quota
+- Public repositories have free access to ARM64 runners
 
 ### Python Wheel Build Fails
 - Ensure C++23 is supported on the platform

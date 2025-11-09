@@ -22,10 +22,14 @@
 
 ## Platform Support
 
-### C++ Library
-- **Linux**: Ubuntu (latest) - AMD64, ARM64
-- **macOS**: Latest - AMD64, ARM64
+### C++ Library (CI Workflow)
+- **Linux AMD64**: `ubuntu-latest` (native)
+- **Linux ARM64**: `ubuntu-24.04-arm` (native, GitHub-hosted)
+- **macOS AMD64**: `macos-13` (Intel, native)
+- **macOS ARM64**: `macos-14` (Apple Silicon, native)
 - **Windows**: Not currently tested (header-only should work)
+
+**Note:** All builds use native runners. No QEMU emulation.
 
 ### Python Package
 - **Linux**: Ubuntu (manylinux) - AMD64, ARM64
@@ -115,9 +119,11 @@ cmake --build build --target hhc_fuzz_decode32
 
 ## Troubleshooting
 
-### ARM64 builds are slow
-- Expected: ARM64 on Linux uses QEMU emulation
-- Solution: This is normal, be patient
+### ARM64 builds
+- All ARM64 builds use native runners (no QEMU)
+- Linux ARM64 requires `ubuntu-24.04-arm` runner availability
+- For private repos, may require GitHub Team or Enterprise plan
+- Check Actions billing for ARM64 minute usage
 
 ### Python wheel build fails
 - Check C++23 compiler support

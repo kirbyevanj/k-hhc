@@ -8,150 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
-    name: Build & Test (${{ matrix.os }}, ${{ matrix.arch }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # AMD64 builds
-          - os: ubuntu-latest
-            arch: amd64
-            cc: clang
-            cxx: clang++
-          - os: macos-latest
-            arch: amd64
-            cc: clang
-            cxx: clang++
-          
-          # ARM64 builds
-          - os: ubuntu-latest
-            arch: arm64
-            cc: clang
-            cxx: clang++
-          - os: macos-latest
-            arch: arm64
-            cc: clang
-            cxx: clang++
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up QEMU (for ARM64 on AMD64)
-      if: matrix.arch == 'arm64' && runner.arch != 'ARM64'
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
-
-    - name: Install dependencies (Ubuntu AMD64)
-      if: matrix.os == 'ubuntu-latest' && matrix.arch == 'amd64'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang cmake ninja-build
-
-    - name: Install dependencies (Ubuntu ARM64)
-      if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }}
-        install: |
-          apt-get update -q -y
-          apt-get install -q -y clang cmake ninja-build git
-        run: |
-          echo "Dependencies installed"
-
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install cmake ninja llvm
-
-    - name: Configure CMake (AMD64)
-      if: matrix.arch == 'amd64'
-      env:
-        CC: ${{ matrix.cc }}
-        CXX: ${{ matrix.cxx }}
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=${{ matrix.cc }} \
-          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
-
-    - name: Configure and Build (ARM64)
-      if: matrix.arch == 'arm64' && matrix.os == 'ubuntu-latest'
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }}
-        dockerRunArgs: |
-          --volume "${PWD}:/workspace"
-        install: |
-          apt-get update -q -y
-          apt-get install -q -y clang cmake ninja-build git
-        run: |
-          cd /workspace
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=clang \
-            -DCMAKE_CXX_COMPILER=clang++
-          cmake --build build --parallel
-
-    - name: Build (AMD64)
-      if: matrix.arch == 'amd64'
-      run: cmake --build build --parallel
-
-    - name: Run Tests (AMD64)
-      if: matrix.arch == 'amd64'
-      working-directory: build
-      run: ctest --output-on-failure --parallel
-
-    - name: Run Tests (ARM64)
-      if: matrix.arch == 'arm64' && matrix.os == 'ubuntu-latest'
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }}
-        dockerRunArgs: |
-          --volume "${PWD}:/workspace"
-        install: |
-          apt-get update -q -y
-          apt-get install -q -y clang cmake ninja-build git
-        run: |
-          cd /workspace/build
-          ctest --output-on-failure --parallel
-
-    - name: Run C++ Examples (AMD64)
-      if: matrix.arch == 'amd64'
-      working-directory: build
-      run: |
-        echo "Running encode example:"
-        ./examples/hhc_encode_example
-        echo ""
-        echo "Running decode example:"
-        ./examples/hhc_decode_example
-
-    - name: Run C++ Examples (ARM64)
-      if: matrix.arch == 'arm64' && matrix.os == 'ubuntu-latest'
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }}
-        dockerRunArgs: |
-          --volume "${PWD}:/workspace"
-        run: |
-          cd /workspace/build
-          echo "Running encode example:"
-          ./examples/hhc_encode_example
-          echo ""
-          echo "Running decode example:"
-          ./examples/hhc_decode_example
-
+  # Stage 1: Lint - runs first, must pass for pipeline to continue
   lint:
     name: Lint (clang-tidy)
     runs-on: ubuntu-latest
@@ -179,30 +36,109 @@ jobs:
         find hhc-cpp tests benchmarks examples python -name "*.cpp" -o -name "*.hpp" | \
         xargs clang-tidy -p build --warnings-as-errors='' || true
 
-  benchmark:
-    name: Benchmark (${{ matrix.arch }})
-    runs-on: ubuntu-latest
+  # Stage 2: Build and Test - runs after lint passes
+  build-and-test:
+    name: Build & Test (${{ matrix.os }}, ${{ matrix.arch }})
+    needs: lint
+    runs-on: ${{ matrix.runs-on }}
     strategy:
+      fail-fast: true
       matrix:
-        arch: [amd64, arm64]
+        include:
+          # AMD64 builds
+          - os: ubuntu
+            arch: amd64
+            runs-on: ubuntu-latest
+            cc: clang
+            cxx: clang++
+          
+          - os: macos
+            arch: amd64
+            runs-on: macos-13
+            cc: clang
+            cxx: clang++
+          
+          # ARM64 builds - use native runners
+          - os: ubuntu
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+            cc: clang
+            cxx: clang++
+          
+          - os: macos
+            arch: arm64
+            runs-on: macos-14
+            cc: clang
+            cxx: clang++
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up QEMU (for ARM64)
-      if: matrix.arch == 'arm64'
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
-
-    - name: Install dependencies (AMD64)
-      if: matrix.arch == 'amd64'
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu'
       run: |
         sudo apt-get update
         sudo apt-get install -y clang cmake ninja-build
 
-    - name: Configure and Build (AMD64)
-      if: matrix.arch == 'amd64'
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos'
+      run: |
+        brew install cmake ninja llvm
+
+    - name: Configure CMake
+      env:
+        CC: ${{ matrix.cc }}
+        CXX: ${{ matrix.cxx }}
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+
+    - name: Build
+      run: cmake --build build --parallel
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest --output-on-failure --parallel
+
+    - name: Run C++ Examples
+      working-directory: build
+      run: |
+        echo "Running encode example:"
+        ./examples/hhc_encode_example
+        echo ""
+        echo "Running decode example:"
+        ./examples/hhc_decode_example
+
+  # Stage 3: Benchmarks - runs after build-and-test passes
+  benchmark:
+    name: Benchmark (${{ matrix.os }}, ${{ matrix.arch }})
+    needs: build-and-test
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu
+            arch: amd64
+            runs-on: ubuntu-latest
+          
+          - os: ubuntu
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang cmake ninja-build
+
+    - name: Configure and Build
       env:
         CC: clang
         CXX: clang++
@@ -210,44 +146,15 @@ jobs:
         cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build --parallel --target hhc_benchmarks
 
-    - name: Configure and Build (ARM64)
-      if: matrix.arch == 'arm64'
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }}
-        dockerRunArgs: |
-          --volume "${PWD}:/workspace"
-        install: |
-          apt-get update -q -y
-          apt-get install -q -y clang cmake ninja-build git
-        run: |
-          cd /workspace
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --parallel --target hhc_benchmarks
-
-    - name: Run Benchmarks (AMD64)
-      if: matrix.arch == 'amd64'
+    - name: Run Benchmarks
       working-directory: build
       run: |
         ./benchmarks/hhc_benchmarks --benchmark_format=console
 
-    - name: Run Benchmarks (ARM64)
-      if: matrix.arch == 'arm64'
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        githubToken: ${{ github.token }}
-        dockerRunArgs: |
-          --volume "${PWD}:/workspace"
-        run: |
-          cd /workspace/build
-          ./benchmarks/hhc_benchmarks --benchmark_format=console
-
+  # Stage 4: Coverage - runs after benchmarks pass
   coverage:
     name: Code Coverage
+    needs: benchmark
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -282,4 +189,3 @@ jobs:
         name: codecov-hhc-cpp
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
-
