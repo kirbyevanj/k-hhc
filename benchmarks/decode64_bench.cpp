@@ -84,7 +84,6 @@ void BM_hhc64BitDecodeSafeUnpadded(benchmark::State& state) {
     for (std::size_t i = 0; i < values.size(); ++i) {
         inputs[i] = std::string(hhc::HHC_64BIT_STRING_LENGTH, 0);
         hhc::hhc_64bit_encode_unpadded(values[i], inputs[i].data());
-        inputs[i].back() = '\0';
     }
 
     std::size_t idx = 0;
