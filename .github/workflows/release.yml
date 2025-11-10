@@ -241,7 +241,7 @@ jobs:
           EOF
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: artifacts
 
@@ -266,7 +266,7 @@ jobs:
 
       - name: Create GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_tag.outputs.tag }}
           name: Release ${{ steps.get_tag.outputs.tag }}
@@ -288,14 +288,14 @@ jobs:
       id-token: write
     steps:
       - name: Download Python packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
 
       - name: Download source distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: sdist
           path: dist
@@ -322,14 +322,14 @@ jobs:
       id-token: write
     steps:
       - name: Download Python packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
 
       - name: Download source distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: sdist
           path: dist
