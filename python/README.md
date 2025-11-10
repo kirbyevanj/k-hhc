@@ -11,6 +11,10 @@ Inspired by [hexahexacontadecimal](https://pypi.org/project/hexahexacontadecimal
 ### Method 1: Using CMake (recommended for development)
 
 ```bash
+# Clone the repository
+git clone https://github.com/kirbyevanj/k-hhc.git
+cd k-hhc
+
 # From the root directory
 mkdir build && cd build
 cmake .. -DHHC_BUILD_PYTHON=ON
