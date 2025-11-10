@@ -323,9 +323,9 @@ jobs:
           name: sdist
           path: python/dist/*.tar.gz
 
-  # ========== FUZZ TESTING ==========
+  # ========== FUZZING ==========
   fuzz:
-    name: Fuzz Testing
+    name: Fuzzing
     needs: build-test-cpp
     runs-on: ubuntu-latest
     timeout-minutes: 30

@@ -29,7 +29,7 @@ This directory contains GitHub Actions workflows for CI/CD operations on the HHC
    - Platforms: Same as C++
    - Uses cibuildwheel for cross-platform wheels
    
-4. **Fuzz Testing** - Security testing with LibFuzzer
+4. **Fuzzing** - Security testing with LibFuzzer
    - Runs only on push or manual trigger
    - 5-minute fuzzing sessions for decode32/decode64
    - Uploads corpus for future runs
