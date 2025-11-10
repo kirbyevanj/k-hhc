@@ -36,9 +36,9 @@ jobs:
             runs-on: windows-latest
           
           # ARM64 builds - use native runners
-          - os: ubuntu
-            arch: aarch64
-            runs-on: ubuntu-24.04-arm
+          #- os: ubuntu
+          #  arch: aarch64
+          #  runs-on: ubuntu-24.04-arm
           - os: macos
             arch: arm64
             runs-on: macos-14

@@ -63,10 +63,10 @@ jobs:
             experimental: false
 
           # Linux ARM64
-          - os: linux
-            arch: arm64
-            runs-on: ubuntu-latest-arm64
-            experimental: true
+          #- os: linux
+          #  arch: arm64
+          #  runs-on: ubuntu-latest-arm64
+          #  experimental: true
 
           # macOS AMD64
           - os: macos
@@ -171,10 +171,10 @@ jobs:
             experimental: false
 
           # Linux ARM64
-          - os: linux
-            arch: arm64
-            runs-on: ubuntu-latest-arm64
-            experimental: true
+          #- os: linux
+          #  arch: arm64
+          #  runs-on: ubuntu-latest-arm64
+          #  experimental: true
 
           # macOS AMD64
           - os: macos
