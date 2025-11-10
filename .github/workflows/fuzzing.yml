@@ -1,0 +1,87 @@
+name: Fuzzing
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  schedule:
+    # Run fuzzing daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  libfuzzer:
+    name: LibFuzzer (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - hhc_fuzz_decode32
+          - hhc_fuzz_decode64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang llvm cmake ninja-build
+
+    - name: Configure with fuzzing
+      env:
+        CC: clang
+        CXX: clang++
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DHHC_ENABLE_FUZZING=ON
+
+    - name: Build fuzzer
+      run: cmake --build build --target ${{ matrix.target }}
+
+    - name: Run fuzzer (short run for CI)
+      working-directory: build/fuzz
+      timeout-minutes: 5
+      run: |
+        # Run fuzzer for 60 seconds with corpus
+        mkdir -p corpus
+        ./${{ matrix.target }} corpus -max_total_time=60 -print_final_stats=1 || true
+
+    - name: Upload corpus
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzzing-corpus-${{ matrix.target }}
+        path: build/fuzz/corpus/
+
+  oss-fuzz-build:
+    name: OSS-Fuzz Build Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang llvm cmake ninja-build
+
+    - name: Build all fuzzers
+      env:
+        CC: clang
+        CXX: clang++
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DHHC_ENABLE_FUZZING=ON
+        cmake --build build --parallel
+
+    - name: Verify fuzzer executables
+      run: |
+        test -f build/fuzz/hhc_fuzz_decode32
+        test -f build/fuzz/hhc_fuzz_decode64
+        echo "All fuzzers built successfully"
+

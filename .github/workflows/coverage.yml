@@ -1,0 +1,207 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+  pull-requests: write  # For PR comments
+
+jobs:
+  # ========== C++ COVERAGE ==========
+  cpp-coverage:
+    name: C++ Code Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better coverage reports
+
+      - name: Setup coverage environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang llvm lcov
+
+      - name: Clean build directory
+        run: rm -rf build
+
+      - name: Configure with coverage
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DHHC_ENABLE_COVERAGE=ON \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_C_FLAGS="--coverage -fprofile-instr-generate -fcoverage-mapping" \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-instr-generate -fcoverage-mapping"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests with coverage
+        working-directory: build
+        run: |
+          # Set up coverage environment
+          export LLVM_PROFILE_FILE="coverage-%p.profraw"
+          
+          # Run tests
+          ctest --output-on-failure --parallel
+          
+          # Run examples to increase coverage
+          ./examples/hhc_encode_example
+          ./examples/hhc_decode_example
+          
+          # Run benchmarks briefly for coverage
+          ./benchmarks/hhc_benchmarks --benchmark_min_time=0.001
+
+      - name: Generate coverage report
+        working-directory: build
+        run: |
+          # Find all profraw files
+          PROFRAW_FILES=$(find . -name "*.profraw" | tr '\n' ' ')
+          
+          # Merge profile data
+          llvm-profdata merge -sparse $PROFRAW_FILES -o coverage.profdata
+          
+          # Generate coverage report
+          llvm-cov report ./tests/hhc_tests \
+            --instr-profile=coverage.profdata \
+            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)" \
+            > coverage-summary.txt
+          
+          # Generate detailed HTML report
+          llvm-cov show ./tests/hhc_tests \
+            --instr-profile=coverage.profdata \
+            --format=html \
+            --output-dir=coverage-html \
+            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)"
+          
+          # Generate lcov format for external tools
+          llvm-cov export ./tests/hhc_tests \
+            --instr-profile=coverage.profdata \
+            --format=lcov \
+            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)" \
+            > coverage.lcov
+
+      - name: Display coverage summary
+        working-directory: build
+        run: |
+          echo "## Coverage Summary"
+          cat coverage-summary.txt
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: build/coverage.lcov
+          flags: cpp
+          name: cpp-coverage
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-coverage-report
+          path: |
+            build/coverage-summary.txt
+            build/coverage-html/
+            build/coverage.lcov
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverageSummary = fs.readFileSync('build/coverage-summary.txt', 'utf8');
+            
+            // Extract coverage percentage
+            const match = coverageSummary.match(/TOTAL\s+\d+\s+\d+\s+([\d.]+)%/);
+            const coverage = match ? match[1] : 'Unknown';
+            
+            const comment = `## C++ Code Coverage Report
+            
+            **Coverage:** ${coverage}%
+            
+            <details>
+            <summary>Detailed Report</summary>
+            
+            \`\`\`
+            ${coverageSummary}
+            \`\`\`
+            
+            </details>
+            
+            View the full HTML report in the workflow artifacts.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # ========== COVERAGE REPORT ==========
+  coverage-report:
+    name: Coverage Report
+    needs: [cpp-coverage]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: coverage-artifacts
+
+      - name: Generate report
+        run: |
+          echo "# Code Coverage Summary"
+          echo
+          echo "## C++ Coverage"
+          if [ -f "coverage-artifacts/cpp-coverage-report/coverage-summary.txt" ]; then
+            tail -n 5 coverage-artifacts/cpp-coverage-report/coverage-summary.txt
+          else
+            echo "No C++ coverage data available"
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-artifacts/
+          retention-days: 30
+
+  # ========== COVERAGE STATUS CHECK ==========
+  coverage-status:
+    name: Coverage Status
+    runs-on: ubuntu-latest
+    needs: [cpp-coverage, coverage-report]
+    if: always()
+    steps:
+      - name: Check coverage status
+        run: |
+          echo "## Coverage Status"
+          echo
+          
+          if [[ "${{ needs.cpp-coverage.result }}" == "success" ]]; then
+            echo "✅ C++ coverage: Success"
+          else
+            echo "❌ C++ coverage: ${{ needs.cpp-coverage.result }}"
+          fi
+          
+          # Don't fail on coverage, just report
+          echo
+          echo "Coverage reports have been generated and uploaded."

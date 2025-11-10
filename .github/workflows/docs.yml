@@ -1,0 +1,80 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+
+    - name: Create Doxyfile
+      run: |
+        cat > Doxyfile << 'EOF'
+        PROJECT_NAME           = "K-HHC"
+        PROJECT_BRIEF          = "C++ Header-only Library for Hexahexacontadecimal Encoding/Decoding"
+        OUTPUT_DIRECTORY       = docs
+        INPUT                  = k-hhc README.md
+        RECURSIVE              = YES
+        EXTRACT_ALL            = YES
+        EXTRACT_PRIVATE        = NO
+        EXTRACT_STATIC         = YES
+        GENERATE_HTML          = YES
+        GENERATE_LATEX         = NO
+        HTML_OUTPUT            = html
+        USE_MDFILE_AS_MAINPAGE = README.md
+        MARKDOWN_SUPPORT       = YESHash Codec
+        AUTOLINK_SUPPORT       = YES
+        BUILTIN_STL_SUPPORT    = YES
+        CPP_CLI_SUPPORT        = NO
+        JAVADOC_AUTOBRIEF      = YES
+        OPTIMIZE_OUTPUT_FOR_C  = NO
+        TYPEDEF_HIDES_STRUCT   = NO
+        HAVE_DOT               = YES
+        DOT_NUM_THREADS        = 4
+        CALL_GRAPH             = YES
+        CALLER_GRAPH           = YES
+        EOF
+
+    - name: Generate documentation
+      run: doxygen Doxyfile
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'docs/html'
+
+  deploy-docs:
+    name: Deploy Documentation
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+

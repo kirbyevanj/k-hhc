@@ -1,0 +1,42 @@
+CompileFlags:
+  Add:
+    # C++23 standard
+    - "-std=c++23"
+    # Include the header-only library directory
+    - "-I/home/kirby/git/hhc-cpp/hhc-cpp"
+    # Common warnings
+    - "-Wall"
+    - "-Wextra"
+  Remove:
+    # Remove MSVC-specific flags if present
+    - "-W*"
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+  ClangTidy:
+    Add:
+      - modernize-*
+      - performance-*
+      - readability-*
+    Remove:
+      - modernize-use-trailing-return-type
+      - readability-identifier-length
+      - readability-magic-numbers
+      - bugprone-string-literal-with-embedded-nul
+
+Index:
+  Background: Build
+
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
+  Designators: Yes
+
+Hover:
+  ShowAKA: Yes
+
+Completion:
+  AllScopes: Yes
+

@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "pybind11>=2.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "k-hhc"
+version = "1.0.1"
+description = "Python bindings for the k-hhc C++ library for HexaHexaContaDecimal (base66) encoding"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Evan Kirby"}
+]
+keywords = ["encoding", "codec", "hash", "performance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "pybind11>=2.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/kirbyevanj/k-hhc"
+Repository = "https://github.com/kirbyevanj/k-hhc"
+Issues = "https://github.com/kirbyevanj/k-hhc/issues"
+
+[tool.cibuildwheel]
+build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+skip = ["*-musllinux_*", "pp*"]
+build-verbosity = 1
+
+# Note: Native runners used, no cross-compilation needed
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+# Use manylinux_2_28 which has GCC 12+ and better C++23 support
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+# Install clang for optimal C++23 support (--nogpgcheck to avoid GPG issues in containers)
+before-all = "dnf install -y --nogpgcheck clang"
+environment = { CC="clang", CXX="clang++" }
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+# Use clang++ which has better C++23 support on macOS
+environment = { CC="clang", CXX="clang++" }
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+# Use clang-cl for better C++23 support (installed at job level)
+environment = { CC="clang-cl", CXX="clang-cl" }
+repair-wheel-command = ""
+

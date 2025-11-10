@@ -1,0 +1,501 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ========== LINT ==========
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy clang
+
+      - name: Configure CMake
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy
+        run: |
+          # Only lint the main library headers (not tests/benchmarks which need external deps)
+          find k-hhc -name "*.cpp" -o -name "*.hpp" | \
+          xargs -P$(nproc) clang-tidy -p build --warnings-as-errors=""
+
+  # ========== BUILD & TEST C++ ==========
+  build-test-cpp:
+    name: Build & Test C++ (${{ matrix.os }}, ${{ matrix.arch }})
+    needs: lint
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 30
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux AMD64
+          - os: linux
+            arch: amd64
+            runs-on: ubuntu-latest
+            experimental: false
+
+          # Linux ARM64
+          - os: linux
+            arch: arm64
+            runs-on: ubuntu-latest-arm64
+            experimental: true
+
+          # macOS AMD64
+          - os: macos
+            arch: amd64
+            runs-on: macos-13
+            experimental: false
+
+          # macOS ARM64
+          - os: macos
+            arch: arm64
+            runs-on: macos-14
+            experimental: false
+
+          # Windows AMD64
+          - os: windows
+            arch: amd64
+            runs-on: windows-latest
+            experimental: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup build environment (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang
+
+      - name: Setup build environment (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja llvm
+
+      - name: Setup build environment (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install cmake ninja llvm
+          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          cmake -B build -G Ninja ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_C_COMPILER=clang-cl ^
+            -DCMAKE_CXX_COMPILER=clang-cl
+
+      - name: Configure CMake (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel
+
+      - name: Run examples
+        shell: bash
+        working-directory: build
+        run: |
+          echo "=== Running C++ examples ==="
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            ./examples/hhc_encode_example.exe
+            ./examples/hhc_decode_example.exe
+            ./examples/hhc_assert_example.exe
+          else
+            ./examples/hhc_encode_example
+            ./examples/hhc_decode_example
+            ./examples/hhc_assert_example
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-cpp-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/Testing/
+
+  # ========== BUILD & TEST PYTHON ==========
+  build-test-python:
+    name: Build & Test Python (${{ matrix.os }}, ${{ matrix.arch }})
+    needs: lint
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 45
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux AMD64
+          - os: linux
+            arch: amd64
+            runs-on: ubuntu-latest
+            experimental: false
+
+          # Linux ARM64
+          - os: linux
+            arch: arm64
+            runs-on: ubuntu-latest-arm64
+            experimental: true
+
+          # macOS AMD64
+          - os: macos
+            arch: amd64
+            runs-on: macos-13
+            experimental: false
+
+          # macOS ARM64
+          - os: macos
+            arch: arm64
+            runs-on: macos-14
+            experimental: false
+
+          # Windows AMD64
+          - os: windows
+            arch: amd64
+            runs-on: windows-latest
+            experimental: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.8
+            3.9
+            3.10
+            3.11
+            3.12
+          allow-prereleases: false
+          update-environment: true
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-${{ matrix.arch }}-pip-${{ hashFiles('**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-pip-
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build cibuildwheel==2.16.2 pytest
+
+      - name: Setup LLVM for Windows
+        if: runner.os == 'Windows'
+        run: |
+          choco install llvm --version=19.1.7 --allow-downgrade -y
+          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build wheels
+        env:
+          CIBW_ARCHS_LINUX: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
+          CIBW_ARCHS_MACOS: ${{ matrix.arch == 'amd64' && 'x86_64' || matrix.arch }}
+          CIBW_ARCHS_WINDOWS: ${{ matrix.arch == 'amd64' && 'AMD64' || matrix.arch }}
+          CIBW_BUILD: cp38-* cp39-* cp310-* cp311-* cp312-*
+          CIBW_SKIP: "*-musllinux_* pp*"
+          CIBW_BUILD_VERBOSITY: 1
+        run: |
+          python -m cibuildwheel --output-dir wheelhouse python
+
+      - name: Build source distribution
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          cd python
+          python -m build --sdist
+
+      - name: Test wheels
+        shell: bash
+        run: |
+          # Upgrade pip for all Python versions and install pytest
+          echo "Installing pytest for all Python versions..."
+          for py in python3.8 python3.9 python3.10 python3.11 python3.12 python; do
+            if command -v $py &> /dev/null; then
+              echo "Setting up $py"
+              $py -m pip install --upgrade pip --quiet
+              $py -m pip install pytest --quiet
+            fi
+          done
+          echo "✓ Setup complete"
+          
+          for wheel in wheelhouse/*.whl; do
+            echo "Testing $wheel"
+            
+            # Extract Python version from wheel filename
+            if [[ $wheel =~ cp([0-9]+)- ]]; then
+              pyver="${BASH_REMATCH[1]}"
+              pymajor="${pyver:0:1}"
+              pyminor="${pyver:1}"
+              
+              # Find matching Python executable
+              if command -v python${pymajor}.${pyminor} &> /dev/null; then
+                PYTHON_CMD="python${pymajor}.${pyminor}"
+              else
+                echo "::warning::Python ${pymajor}.${pyminor} not found, skipping $wheel"
+                continue
+              fi
+            else
+              PYTHON_CMD="python"
+            fi
+            
+            echo "Using $PYTHON_CMD for $wheel"
+            
+            # Try to install wheel - will fail if incompatible with platform
+            if $PYTHON_CMD -m pip install --force-reinstall --no-deps "$wheel" > /tmp/pip_install.log 2>&1; then
+              echo "✓ Wheel installed successfully"
+              
+              # Run tests
+              cd python
+              if ! $PYTHON_CMD -m pytest test_hhc.py -v; then
+                echo "::error::Tests failed for $wheel"
+                exit 1
+              fi
+              if ! $PYTHON_CMD examples/encode_example.py; then
+                echo "::error::Encode example failed for $wheel"
+                exit 1
+              fi
+              if ! $PYTHON_CMD examples/decode_example.py; then
+                echo "::error::Decode example failed for $wheel"
+                exit 1
+              fi
+              cd ..
+              
+              # Uninstall
+              $PYTHON_CMD -m pip uninstall -y hhc
+            else
+              echo "::warning::Wheel $wheel not compatible with $PYTHON_CMD on this platform (see log for details), skipping"
+              cat /tmp/pip_install.log | head -5
+            fi
+          done
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+      - name: Upload source distribution
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: python/dist/*.tar.gz
+
+  # ========== FUZZ TESTING ==========
+  fuzz:
+    name: Fuzz Testing
+    needs: build-test-cpp
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup fuzzing environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm cmake ninja-build
+
+      - name: Configure with fuzzing
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DHHC_ENABLE_FUZZING=ON \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build fuzzers
+        run: cmake --build build --parallel
+
+      - name: Create corpus directories
+        run: |
+          mkdir -p corpus/decode32
+          mkdir -p corpus/decode64
+
+      - name: Run fuzzing (decode32)
+        id: fuzz32
+        continue-on-error: true
+        shell: bash
+        run: |
+          # Run fuzzer - libFuzzer exits non-zero on crash
+          # Use '|| true' to prevent immediate exit, then check the code
+          timeout 300s ./build/fuzz/hhc_fuzz_decode32 corpus/decode32 \
+            -max_total_time=300 \
+            -print_final_stats=1 || FUZZ32_EXIT=$?
+          
+          # Default to 0 if not set
+          FUZZ32_EXIT=${FUZZ32_EXIT:-0}
+          
+          echo "exit_code=$FUZZ32_EXIT" >> $GITHUB_OUTPUT
+          echo "Decode32 fuzzer exit code: $FUZZ32_EXIT"
+          
+          # Exit codes: 0=success, 124=timeout (expected), others=crash/leak/error
+          if [ $FUZZ32_EXIT -ne 0 ] && [ $FUZZ32_EXIT -ne 124 ]; then
+            echo "::error::Decode32 fuzzer failed with exit code $FUZZ32_EXIT"
+            exit $FUZZ32_EXIT
+          fi
+
+      - name: Run fuzzing (decode64)
+        id: fuzz64
+        continue-on-error: true
+        shell: bash
+        run: |
+          # Run fuzzer - libFuzzer exits non-zero on crash
+          # Use '|| true' to prevent immediate exit, then check the code
+          timeout 300s ./build/fuzz/hhc_fuzz_decode64 corpus/decode64 \
+            -max_total_time=300 \
+            -print_final_stats=1 || FUZZ64_EXIT=$?
+          
+          # Default to 0 if not set
+          FUZZ64_EXIT=${FUZZ64_EXIT:-0}
+          
+          echo "exit_code=$FUZZ64_EXIT" >> $GITHUB_OUTPUT
+          echo "Decode64 fuzzer exit code: $FUZZ64_EXIT"
+          
+          # Exit codes: 0=success, 124=timeout (expected), others=crash/leak/error
+          if [ $FUZZ64_EXIT -ne 0 ] && [ $FUZZ64_EXIT -ne 124 ]; then
+            echo "::error::Decode64 fuzzer failed with exit code $FUZZ64_EXIT"
+            exit $FUZZ64_EXIT
+          fi
+
+      - name: Upload fuzzing artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzzing-corpus
+          path: |
+            corpus/
+            crash-*
+            leak-*
+            timeout-*
+          retention-days: 7
+
+      - name: Check for crash artifacts
+        if: always()
+        run: |
+          # Check for any crash/leak/timeout files
+          if ls crash-* 1> /dev/null 2>&1; then
+            echo "::error::Fuzzing found crash files!"
+            ls -lh crash-*
+            exit 1
+          fi
+          if ls leak-* 1> /dev/null 2>&1; then
+            echo "::error::Fuzzing found memory leak files!"
+            ls -lh leak-*
+            exit 1
+          fi
+          if ls timeout-* 1> /dev/null 2>&1; then
+            echo "::warning::Fuzzing found timeout files (may indicate slow inputs)"
+            ls -lh timeout-*
+          fi
+          
+      - name: Fail job if fuzzing had errors
+        if: always()
+        run: |
+          echo "=== Fuzzing Results ==="
+          echo "Fuzz32 outcome: ${{ steps.fuzz32.outcome }}"
+          echo "Fuzz64 outcome: ${{ steps.fuzz64.outcome }}"
+          echo "Fuzz32 exit code: ${{ steps.fuzz32.outputs.exit_code }}"
+          echo "Fuzz64 exit code: ${{ steps.fuzz64.outputs.exit_code }}"
+          
+          FUZZ32_EXIT="${{ steps.fuzz32.outputs.exit_code }}"
+          FUZZ64_EXIT="${{ steps.fuzz64.outputs.exit_code }}"
+          
+          FAILED=0
+          
+          # Check if steps failed (even with continue-on-error)
+          if [ "${{ steps.fuzz32.outcome }}" == "failure" ]; then
+            echo "::error::Decode32 fuzzer step failed"
+            FAILED=1
+          fi
+          
+          if [ "${{ steps.fuzz64.outcome }}" == "failure" ]; then
+            echo "::error::Decode64 fuzzer step failed"
+            FAILED=1
+          fi
+          
+          # Also check exit codes as backup
+          # Exit code 0 is success, 124 is timeout (expected)
+          # Any other exit code indicates a crash, leak, or other error
+          if [ -n "$FUZZ32_EXIT" ] && [ "$FUZZ32_EXIT" != "0" ] && [ "$FUZZ32_EXIT" != "124" ]; then
+            echo "::error::Decode32 fuzzer failed with exit code $FUZZ32_EXIT"
+            FAILED=1
+          fi
+          
+          if [ -n "$FUZZ64_EXIT" ] && [ "$FUZZ64_EXIT" != "0" ] && [ "$FUZZ64_EXIT" != "124" ]; then
+            echo "::error::Decode64 fuzzer failed with exit code $FUZZ64_EXIT"
+            FAILED=1
+          fi
+          
+          if [ $FAILED -eq 1 ]; then
+            echo "::error::One or more fuzzers failed - failing job"
+            exit 1
+          fi
+          
+          echo "✅ All fuzzers completed successfully"
+
+  # ========== FINAL STATUS CHECK ==========
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [lint, build-test-cpp, build-test-python, fuzz]
+    if: always()
+    steps:
+      - name: Check status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "::error::One or more required jobs failed"
+            exit 1
+          fi
+          
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "::warning::One or more jobs were cancelled"
+          fi
+          
+          echo "✅ All required jobs passed!"
