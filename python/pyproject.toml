@@ -8,7 +8,7 @@ version = "1.0.2"
 description = "Python bindings for the k-hhc C++ library for HexaHexaContaDecimal (base66) encoding"
 readme = "README.md"
 requires-python = ">=3.6"
-license = "Apache-2.0"
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Evan Kirby"}
 ]
