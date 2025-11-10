@@ -7,7 +7,7 @@ if(NOT CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++)
 endif()
 
-project(k-hhc VERSION 1.0.2 LANGUAGES CXX)
+project(k-hhc VERSION 1.0.3 LANGUAGES CXX)
 
 option(HHC_ENABLE_COVERAGE "Enable LLVM coverage instrumentation" OFF)
 
