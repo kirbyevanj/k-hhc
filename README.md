@@ -14,7 +14,40 @@ Inspired by [hexahexacontadecimal](https://pypi.org/project/hexahexacontadecimal
 
 This project is intended to be an exploration in creating performant, secure, and portable algorithms, while also being a learning experience for me. Take it with a grain of salt.
 
-This is a C++23 header only library.
+## Quick Start
+
+### Python
+
+```bash
+# Install from PyPI
+pip install k-hhc
+
+# Verify
+python -c "import k_hhc; print(k_hhc.encode_padded_32bit(629717763))"
+```
+
+### C++
+
+```bash
+# Clone the repository
+git clone https://github.com/kirbyevanj/k-hhc.git
+cd k-hhc
+
+# Basic build: produces library, tests, and examples
+mkdir build && cd build
+cmake ..
+cmake --build .
+
+# Run the tests
+ctest --output-on-failure
+
+# Run the benchmarks
+./benchmarks/hhc_benchmarks
+
+# Run the examples
+./examples/hhc_encode_example
+./examples/hhc_decode_example
+```
 
 ## Building the Project
 
@@ -29,6 +62,10 @@ This is a C++23 header only library.
 #### Basic Build
 
 ```bash
+# Clone the repository
+git clone https://github.com/kirbyevanj/k-hhc.git
+cd k-hhc
+
 # Create build directory
 mkdir build && cd build
 
@@ -36,7 +73,7 @@ mkdir build && cd build
 cmake ..
 
 # Or specify build type explicitly
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 
 # Build all targets
 cmake --build .
@@ -45,9 +82,21 @@ cmake --build .
 #### Build with Python Bindings
 
 ```bash
-mkdir build && cd build
+# Clone the repository
+...
+# Build with Python bindings
 cmake -DHHC_BUILD_PYTHON=ON ..
 cmake --build .
+...
+
+# Goto python directory
+cd ../python
+
+# Build the Python package
+pip install .
+
+# Test the module
+PYTHONPATH=./python python3 -c "import k_hhc; print(k_hhc.encode_padded_32bit(629717763))"
 ```
 
 #### Build with Code Coverage
@@ -98,20 +147,11 @@ cmake --build .
 | Option | Default | Description |
 |--------|---------|-------------|
 | `HHC_ENABLE_COVERAGE` | `OFF` | Enable LLVM code coverage instrumentation. Requires Clang compiler. Adds a `coverage` target that generates HTML reports. |
-| `HHC_BUILD_PYTHON` | `OFF` | Build Python bindings using pybind11. Requires Python 3.8+ and pybind11. |
+| `HHC_BUILD_PYTHON` | `OFF` | Build Python bindings using pybind11. Requires Python 3.6+ and pybind11. |
 | `HHC_ENABLE_FUZZING` | `OFF` | Build libFuzzer targets for fuzz testing. Requires Clang compiler with fuzzing support. |
-
-
-## Running Tests
-
-```bash
-# From the build directory
-cmake --build 
-./tests/hhc_tests
-
-# Or using CTest
-ctest --output-on-failure
-```
+| `CMAKE_BUILD_TYPE` | `Release` | Build type: `Debug`, `Release`, `RelWithDebInfo`, or `MinSizeRel`. |
+| `CMAKE_C_COMPILER` | (system default) | C compiler to use (e.g., `clang`, `gcc`). |
+| `CMAKE_CXX_COMPILER` | (system default) | C++ compiler to use (e.g., `clang++`, `g++`). |
 
 ## Running Benchmarks
 
@@ -132,24 +172,6 @@ Dependencies are managed via CMake's ExternalProject_Add and will be automatical
 
 ## Python Bindings
 
-The library provides Python bindings through pybind11.
-
-### Installation from PyPI
-
-The easiest way to install the Python package:
-
-```bash
-pip install k-hhc
-```
-
-Or install a specific version:
-
-```bash
-pip install k-hhc==1.0.2
-```
-
-PyPI package: https://pypi.org/project/k-hhc/
-
 ### Building from Source with CMake
 
 ```bash
@@ -161,22 +183,15 @@ cmake --build .
 PYTHONPATH=./python python3 -c "import k_hhc; print(k_hhc.encode_padded_32bit(42))"
 ```
 
-### Building with setuptools
-
-```bash
-cd python
-pip install .
-```
-
 ### Python API
 
 ```python
 import k_hhc
 
 # 32-bit operations
-encoded = k_hhc.encode_padded_32bit(424242)      # Returns: "--.TNv"
-encoded = k_hhc.encode_unpadded_32bit(424242)    # Returns: ".TNv"
-decoded = k_hhc.decode_32bit(".TNv")             # Returns: 424242
+encoded = k_hhc.encode_padded_32bit(424242)   # Returns: "--.TNv"
+encoded = k_hhc.encode_unpadded_32bit(424242) # Returns: ".TNv"
+decoded = k_hhc.decode_32bit(".TNv")          # Returns: 424242
 
 # 64-bit operations
 encoded = k_hhc.encode_padded_64bit(9876543210)   # Returns: "-----5tVfK4"
