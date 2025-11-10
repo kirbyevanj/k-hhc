@@ -8,7 +8,7 @@ version = "1.0.2"
 description = "Python bindings for the k-hhc C++ library for HexaHexaContaDecimal (base66) encoding"
 readme = "README.md"
 requires-python = ">=3.6"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 authors = [
     {name = "Evan Kirby"}
 ]
@@ -16,7 +16,6 @@ keywords = ["encoding", "codec", "hash", "performance"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",

@@ -131,11 +131,9 @@ setup(
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
     python_requires=">=3.6",
-    install_requires=["pybind11>=2.6.0"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
