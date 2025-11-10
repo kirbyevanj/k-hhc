@@ -45,47 +45,49 @@ def detect_compiler_and_configure():
             'extra_link_args': []
         }
     
-    # GCC/Clang flags - detect c++23 vs c++2b support
+    # GCC/Clang flags - detect available C++ standard support
     compiler = os.environ.get('CXX', 'c++')
-    
-    # Try c++23 first
-    try:
-        result = subprocess.run(
-            [compiler, '-std=c++23', '-x', 'c++', '-E', '-'],
-            input=b'int main() { return 0; }',
-            capture_output=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            return {
-                'cxx_std': 23,
-                'extra_compile_args': ['-fvisibility=hidden', '-g0'],
-                'extra_link_args': []
-            }
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
-    
-    # Fall back to c++2b (draft C++23)
-    try:
-        result = subprocess.run(
-            [compiler, '-std=c++2b', '-x', 'c++', '-E', '-'],
-            input=b'int main() { return 0; }',
-            capture_output=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            print(f"Note: Using -std=c++2b as compiler doesn't support -std=c++23", file=sys.stderr)
-            return {
-                'cxx_std': None,  # Don't use cxx_std parameter
-                'extra_compile_args': ['-std=c++2b', '-fvisibility=hidden', '-g0'],
-                'extra_link_args': []
-            }
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
-    
-    # Default configuration
+
+    # Try standards in order of preference: c++23, c++2b, c++20
+    standards_to_try = [
+        ('c++23', 23),
+        ('c++2b', None),  # None means use extra_compile_args
+        ('c++20', 20),
+    ]
+
+    for std_flag, cxx_std_value in standards_to_try:
+        try:
+            result = subprocess.run(
+                [compiler, f'-std={std_flag}', '-x', 'c++', '-E', '-'],
+                input=b'int main() { return 0; }',
+                capture_output=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                if std_flag != 'c++23':
+                    print(f"Note: Using -std={std_flag} as compiler doesn't support -std=c++23", file=sys.stderr)
+
+                if cxx_std_value is not None:
+                    # Use setuptools cxx_std parameter
+                    return {
+                        'cxx_std': cxx_std_value,
+                        'extra_compile_args': ['-fvisibility=hidden', '-g0'],
+                        'extra_link_args': []
+                    }
+                else:
+                    # Use manual flag in extra_compile_args
+                    return {
+                        'cxx_std': None,
+                        'extra_compile_args': [f'-std={std_flag}', '-fvisibility=hidden', '-g0'],
+                        'extra_link_args': []
+                    }
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            pass
+
+    # Ultimate fallback
+    print("Warning: No supported C++ standard found, using default", file=sys.stderr)
     return {
-        'cxx_std': 23,
+        'cxx_std': None,
         'extra_compile_args': ['-fvisibility=hidden', '-g0'],
         'extra_link_args': []
     }
