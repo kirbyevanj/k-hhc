@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "k-hhc"
-version = "1.0.4"
+version = "1.0.5"
 description = "Python bindings for the k-hhc C++ library for HexaHexaContaDecimal (base66) encoding"
 readme = "README.md"
 requires-python = ">=3.6"

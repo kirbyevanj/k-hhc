@@ -123,7 +123,7 @@ else:
 
 setup(
     name="k-hhc",
-    version="1.0.4",
+    version="1.0.5",
     author="Evan Kirby",
     author_email="kirbyevanj@gmail.com",
     url="https://github.com/kirbyevanj/k-hhc",
