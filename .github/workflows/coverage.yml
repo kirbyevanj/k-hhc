@@ -31,15 +31,44 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build clang llvm lcov
 
-      - name: Clean build directory
-        run: rm -rf build
+      - name: Clean build directories
+        run: rm -rf build-release build-debug coverage-data
 
-      - name: Configure with coverage
+      - name: Configure Release with coverage
         env:
           CC: clang
           CXX: clang++
         run: |
-          cmake -B build -G Ninja \
+          cmake -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DHHC_ENABLE_COVERAGE=ON \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_C_FLAGS="--coverage -fprofile-instr-generate -fcoverage-mapping" \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-instr-generate -fcoverage-mapping"
+
+      - name: Build Release
+        run: cmake --build build-release --parallel
+
+      - name: Run Release tests with coverage
+        working-directory: build-release
+        run: |
+          mkdir -p ../coverage-data
+          export LLVM_PROFILE_FILE="../coverage-data/release-%p.profraw"
+          
+          ctest --output-on-failure --parallel
+          
+          ./examples/hhc_encode_example
+          ./examples/hhc_decode_example
+          
+          ./benchmarks/hhc_benchmarks --benchmark_min_time=0.001
+
+      - name: Configure Debug with coverage
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build-debug -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DHHC_ENABLE_COVERAGE=ON \
             -DCMAKE_C_COMPILER=clang \
@@ -47,56 +76,46 @@ jobs:
             -DCMAKE_C_FLAGS="--coverage -fprofile-instr-generate -fcoverage-mapping" \
             -DCMAKE_CXX_FLAGS="--coverage -fprofile-instr-generate -fcoverage-mapping"
 
-      - name: Build
-        run: cmake --build build --parallel
+      - name: Build Debug
+        run: cmake --build build-debug --parallel
 
-      - name: Run tests with coverage
-        working-directory: build
+      - name: Run Debug tests with coverage
+        working-directory: build-debug
         run: |
-          # Set up coverage environment
-          export LLVM_PROFILE_FILE="coverage-%p.profraw"
+          mkdir -p ../coverage-data
+          export LLVM_PROFILE_FILE="../coverage-data/debug-%p.profraw"
           
-          # Run tests
           ctest --output-on-failure --parallel
           
-          # Run examples to increase coverage
           ./examples/hhc_encode_example
           ./examples/hhc_decode_example
           
-          # Run benchmarks briefly for coverage
           ./benchmarks/hhc_benchmarks --benchmark_min_time=0.001
 
       - name: Generate coverage report
-        working-directory: build
+        working-directory: coverage-data
         run: |
-          # Find all profraw files
-          PROFRAW_FILES=$(find . -name "*.profraw" | tr '\n' ' ')
+          llvm-profdata merge -sparse *.profraw -o coverage-combined.profdata
           
-          # Merge profile data
-          llvm-profdata merge -sparse $PROFRAW_FILES -o coverage.profdata
-          
-          # Generate coverage report
-          llvm-cov report ./tests/hhc_tests \
-            --instr-profile=coverage.profdata \
+          llvm-cov report ../build-release/tests/hhc_tests ../build-debug/tests/hhc_tests \
+            --instr-profile=coverage-combined.profdata \
             --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)" \
             > coverage-summary.txt
           
-          # Generate detailed HTML report
-          llvm-cov show ./tests/hhc_tests \
-            --instr-profile=coverage.profdata \
+          llvm-cov show ../build-release/tests/hhc_tests ../build-debug/tests/hhc_tests \
+            --instr-profile=coverage-combined.profdata \
             --format=html \
             --output-dir=coverage-html \
             --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)"
           
-          # Generate lcov format for external tools
-          llvm-cov export ./tests/hhc_tests \
-            --instr-profile=coverage.profdata \
+          llvm-cov export ../build-release/tests/hhc_tests ../build-debug/tests/hhc_tests \
+            --instr-profile=coverage-combined.profdata \
             --format=lcov \
             --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)" \
             > coverage.lcov
 
       - name: Display coverage summary
-        working-directory: build
+        working-directory: coverage-data
         run: |
           echo "## Coverage Summary"
           cat coverage-summary.txt
@@ -104,7 +123,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: build/coverage.lcov
+          files: coverage-data/coverage.lcov
           flags: cpp
           name: cpp-coverage
           fail_ci_if_error: false
@@ -116,9 +135,10 @@ jobs:
         with:
           name: cpp-coverage-report
           path: |
-            build/coverage-summary.txt
-            build/coverage-html/
-            build/coverage.lcov
+            coverage-data/coverage-summary.txt
+            coverage-data/coverage-html/
+            coverage-data/coverage.lcov
+            coverage-data/coverage-combined.profdata
 
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request'
@@ -126,7 +146,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const coverageSummary = fs.readFileSync('build/coverage-summary.txt', 'utf8');
+            const coverageSummary = fs.readFileSync('coverage-data/coverage-summary.txt', 'utf8');
             
             // Extract coverage percentage
             const match = coverageSummary.match(/TOTAL\s+\d+\s+\d+\s+([\d.]+)%/);
@@ -171,8 +191,9 @@ jobs:
           echo "# Code Coverage Summary"
           echo
           echo "## C++ Coverage"
-          if [ -f "coverage-artifacts/cpp-coverage-report/coverage-summary.txt" ]; then
-            tail -n 5 coverage-artifacts/cpp-coverage-report/coverage-summary.txt
+          SUMMARY_FILE="coverage-artifacts/cpp-coverage-report/coverage-data/coverage-summary.txt"
+          if [ -f "$SUMMARY_FILE" ]; then
+            tail -n 5 "$SUMMARY_FILE"
           else
             echo "No C++ coverage data available"
           fi
