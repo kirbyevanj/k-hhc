@@ -12,7 +12,7 @@ license = {file = "LICENSE"}
 authors = [
     {name = "Evan Kirby"}
 ]
-keywords = ["encoding", "codec", "hhc", "performance"]
+keywords = ["encoding", "codec", "hhc", "hexahexacontadecimal", "base66", "performance"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
