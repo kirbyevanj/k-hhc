@@ -4,7 +4,6 @@
 #include "hhc.hpp"
 
 #include <array>
-#include <string>
 
 /**
  * @file encode32_bench.cpp
@@ -14,22 +13,29 @@
 namespace {
 
 using hhc::bench::Permuted32;
+using hhc::bench::fill_with_permuted_values;
+using hhc::HHC_32BIT_STRING_LENGTH;
+using hhc::hhc_32bit_encode_padded;
+using hhc::hhc_32bit_encode_unpadded;
+
+using std::array;
+using benchmark::DoNotOptimize;
 
 /**
  * @brief Benchmark the padded 32-bit encoder which writes the full 6-character representation.
  */
 void BM_hhc32BitEncodePadded(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    std::array<uint32_t, 2U << 16> inputs{};
-    hhc::bench::fill_with_permuted_values(inputs, permuted32);
+    array<uint32_t, 2U << 16> inputs{};
+    fill_with_permuted_values(inputs, permuted32);
 
-    std::array<char, hhc::HHC_32BIT_STRING_LENGTH> output{};
-    std::size_t index = 0;
+    array<char, HHC_32BIT_STRING_LENGTH> output{};
+    std::size_t idx = 0;
     const std::size_t mask = inputs.size() - 1;
 
     for (auto _ : state) {
-        hhc::hhc_32bit_encode_padded(inputs[++index & mask], output.data());
-        benchmark::DoNotOptimize(output);
+        hhc_32bit_encode_padded(inputs[++idx & mask], output.data());
+        DoNotOptimize(output);
     }
 }
 BENCHMARK(BM_hhc32BitEncodePadded);
@@ -39,16 +45,16 @@ BENCHMARK(BM_hhc32BitEncodePadded);
  */
 void BM_hhc32BitEncodeUnpadded(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    std::array<uint32_t, 2U << 16> inputs{};
-    hhc::bench::fill_with_permuted_values(inputs, permuted32);
+    array<uint32_t, 2U << 16> inputs{};
+    fill_with_permuted_values(inputs, permuted32);
 
-    std::array<char, hhc::HHC_32BIT_STRING_LENGTH> output{};
-    std::size_t index = 0;
+    array<char, HHC_32BIT_STRING_LENGTH> output{};
+    std::size_t idx = 0;
     const std::size_t mask = inputs.size() - 1;
 
     for (auto _ : state) {
-        hhc::hhc_32bit_encode_unpadded(inputs[++index & mask], output.data());
-        benchmark::DoNotOptimize(output);
+        hhc_32bit_encode_unpadded(inputs[++idx & mask], output.data());
+        DoNotOptimize(output);
     }
 }
 BENCHMARK(BM_hhc32BitEncodeUnpadded);

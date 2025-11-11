@@ -16,32 +16,40 @@
 namespace {
 
 using hhc::bench::Permuted32;
+using hhc::bench::next_u64;
+using hhc::bench::random_alphabet_char;
+using hhc::bench::PERMUTATION_BLOCKSIZE;
+using hhc::HHC_64BIT_STRING_LENGTH;
+using hhc::hhc_64bit_decode_unsafe;
+using hhc::hhc_64bit_decode;
+using hhc::hhc_64bit_encode_padded;
+using hhc::hhc_64bit_encode_unpadded;
 
-inline uint64_t next_u64(Permuted32& generator) {
-    return (static_cast<uint64_t>(generator.next()) << 32) | generator.next();
-}
+using std::array;
+using std::string;
+using benchmark::DoNotOptimize;
 
 /**
  * @brief Benchmark the unchecked 64-bit decoder operating on random alphabet characters.
  */
 void BM_hhc64BitDecodeUnsafe(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    constexpr std::size_t kPoolSize = 1U << 16;
-    constexpr std::size_t kMask = kPoolSize - 1;
+    constexpr std::size_t pool_size = 1U << 16;
+    constexpr std::size_t mask = pool_size - 1;
 
-    std::array<std::array<char, hhc::HHC_64BIT_STRING_LENGTH + 1>, kPoolSize> inputs{};
+    array<string, pool_size> inputs{};
     for (auto& entry : inputs) {
-        for (std::size_t i = 0; i < hhc::HHC_64BIT_STRING_LENGTH; ++i) {
-            entry[i] = hhc::bench::random_alphabet_char(permuted32);
+        entry.resize(HHC_64BIT_STRING_LENGTH);
+        for (std::size_t i = 0; i < HHC_64BIT_STRING_LENGTH; ++i) {
+            entry[i] = random_alphabet_char(permuted32);
         }
-        entry[hhc::HHC_64BIT_STRING_LENGTH] = '\0';
+        entry[HHC_64BIT_STRING_LENGTH] = '\0';
     }
 
     std::size_t idx = 0;
     for (auto _ : state) {
-        const auto& current = inputs[idx++ & kMask];
-        uint64_t output = hhc::hhc_64bit_decode_unsafe(current.data());
-        benchmark::DoNotOptimize(output);
+        const auto& current = inputs[idx++ & mask];
+        DoNotOptimize(hhc::hhc_64bit_decode_unsafe(current.data()));
     }
 }
 BENCHMARK(BM_hhc64BitDecodeUnsafe);
@@ -51,22 +59,23 @@ BENCHMARK(BM_hhc64BitDecodeUnsafe);
  */
 void BM_hhc64BitDecodeSafePadded(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    std::array<uint64_t, hhc::bench::kPermutationBlockSize> values{};
+    array<uint64_t, PERMUTATION_BLOCKSIZE> values{};
     for (auto& value : values) {
         value = next_u64(permuted32);
     }
 
-    std::array<std::array<char, hhc::HHC_64BIT_STRING_LENGTH>, values.size()> inputs{};
+    array<string, values.size()> inputs{};
     for (std::size_t i = 0; i < values.size(); ++i) {
-        hhc::hhc_64bit_encode_padded(values[i], inputs[i].data());
+        inputs[i].resize(HHC_64BIT_STRING_LENGTH);
+        hhc_64bit_encode_padded(values[i], inputs[i].data());
+        inputs[i][HHC_64BIT_STRING_LENGTH] = '\0';
     }
 
     std::size_t idx = 0;
     const std::size_t mask = inputs.size() - 1;
     for (auto _ : state) {
         const auto& current = inputs[idx++ & mask];
-        uint64_t output = hhc::hhc_64bit_decode(current.data());
-        benchmark::DoNotOptimize(output);
+        DoNotOptimize(hhc::hhc_64bit_decode(current.data()));
     }
 }
 BENCHMARK(BM_hhc64BitDecodeSafePadded);
@@ -76,22 +85,21 @@ BENCHMARK(BM_hhc64BitDecodeSafePadded);
  */
 void BM_hhc64BitDecodeSafeUnpadded(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    std::array<uint64_t, hhc::bench::kPermutationBlockSize> values{};
+    array<uint64_t, PERMUTATION_BLOCKSIZE> values{};
     for (auto& value : values) {
         value = next_u64(permuted32);
     }
-    std::array<std::string, values.size()> inputs{};
+    array<string, values.size()> inputs{};
     for (std::size_t i = 0; i < values.size(); ++i) {
-        inputs[i] = std::string(hhc::HHC_64BIT_STRING_LENGTH, 0);
-        hhc::hhc_64bit_encode_unpadded(values[i], inputs[i].data());
+        inputs[i] = string(HHC_64BIT_STRING_LENGTH, 0);
+        hhc_64bit_encode_unpadded(values[i], inputs[i].data());
     }
 
     std::size_t idx = 0;
     const std::size_t mask = inputs.size() - 1;
     for (auto _ : state) {
         const auto& current = inputs[idx++ & mask];
-        uint64_t output = hhc::hhc_64bit_decode(current.data());
-        benchmark::DoNotOptimize(output);
+        DoNotOptimize(hhc_64bit_decode(current.data()));
     }
 }
 BENCHMARK(BM_hhc64BitDecodeSafeUnpadded);

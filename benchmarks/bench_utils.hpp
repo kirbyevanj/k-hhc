@@ -2,7 +2,7 @@
 
 /**
  * @file bench_utils.hpp
- * @brief Common utilities shared across the HHC benchmark suite.
+ * @brief Common utilities shared across benchmarks.
  */
 
 #include <array>
@@ -15,7 +15,7 @@
 namespace hhc::bench {
 
 /// Size of the pre-generated permutation blocks used by the benchmarks.
-inline constexpr std::size_t kPermutationBlockSize = 1U << 9;
+inline constexpr std::size_t PERMUTATION_BLOCKSIZE = 1U << 9;
 
 /**
  * @brief Lightweight 32-bit permuted counter used to generate reproducible pseudo-random inputs.
@@ -64,5 +64,11 @@ inline char random_alphabet_char(Permuted32& generator) {
     }
 }
 
-}  // namespace hhc::bench
+/**
+ * @brief Generate the next 64-bit value from the permuted generator.
+ */
+inline uint64_t next_u64(Permuted32& generator) {
+    return (static_cast<uint64_t>(generator.next()) << 32) | generator.next();
+}
 
+}  // namespace hhc::bench

@@ -15,15 +15,24 @@
 namespace {
 
 using hhc::bench::Permuted32;
+using hhc::bench::PERMUTATION_BLOCKSIZE;
+using hhc::HHC_32BIT_STRING_LENGTH;
+using hhc::ALPHABET;
+using hhc::BASE;
+using hhc::hhc_validate_string;
+
+using std::array;
+using std::string;
+using benchmark::DoNotOptimize;
 
 template <std::size_t N>
-std::array<std::string, hhc::bench::kPermutationBlockSize> generate_random_strings() {
+array<string, PERMUTATION_BLOCKSIZE> generate_random_strings() {
     Permuted32 permuted32(rand());
-    std::array<std::string, hhc::bench::kPermutationBlockSize> inputs{};
+    array<string, PERMUTATION_BLOCKSIZE> inputs{};
     for (auto& str : inputs) {
         str.resize(N);
         for (auto& ch : str) {
-            ch = hhc::ALPHABET[permuted32.next() % hhc::BASE];
+            ch = ALPHABET[permuted32.next() % BASE];
         }
     }
     return inputs;
@@ -39,8 +48,7 @@ void BM_hhcValidateString32(benchmark::State& state) {
 
     for (auto _ : state) {
         const auto& current = inputs[idx++ & mask];
-        bool result = hhc::hhc_validate_string(current.c_str());
-        benchmark::DoNotOptimize(result);
+        DoNotOptimize(hhc_validate_string(current.c_str()));
     }
 }
 BENCHMARK(BM_hhcValidateString32);
@@ -55,8 +63,7 @@ void BM_hhcValidateString64(benchmark::State& state) {
 
     for (auto _ : state) {
         const auto& current = inputs[idx++ & mask];
-        bool result = hhc::hhc_validate_string(current.c_str());
-        benchmark::DoNotOptimize(result);
+        DoNotOptimize(hhc_validate_string(current.c_str()));
     }
 }
 BENCHMARK(BM_hhcValidateString64);

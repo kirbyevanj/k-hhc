@@ -86,8 +86,8 @@ namespace hhc::detail {
      * @param function Function name
      */
     [[noreturn]] inline void assertion_failed(const char* expression,
-                                              const char* file,
-                                              int line,
+        const char* file,
+        int line,
                                               const char* function) {
 #ifndef NDEBUG
         // Debug build: provide stack trace and error message

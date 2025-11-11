@@ -2,8 +2,8 @@
 #include "hhc_assert.hpp"
 
 #ifndef _WIN32
-    #include <csignal>
-    #include <csetjmp>
+#include <csignal>
+#include <csetjmp>
 #endif
 
 /**

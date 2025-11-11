@@ -47,7 +47,7 @@ def detect_compiler_and_configure():
     
     # GCC/Clang flags - detect available C++ standard support
     compiler = os.environ.get('CXX', 'c++')
-
+    
     # Try standards in order of preference: c++23, c++2b, c++20
     standards_to_try = [
         ('c++23', 23),
@@ -56,34 +56,34 @@ def detect_compiler_and_configure():
     ]
 
     for std_flag, cxx_std_value in standards_to_try:
-        try:
-            result = subprocess.run(
+    try:
+        result = subprocess.run(
                 [compiler, f'-std={std_flag}', '-x', 'c++', '-E', '-'],
-                input=b'int main() { return 0; }',
-                capture_output=True,
-                timeout=5
-            )
-            if result.returncode == 0:
+            input=b'int main() { return 0; }',
+            capture_output=True,
+            timeout=5
+        )
+        if result.returncode == 0:
                 if std_flag != 'c++23':
                     print(f"Note: Using -std={std_flag} as compiler doesn't support -std=c++23", file=sys.stderr)
 
                 if cxx_std_value is not None:
                     # Use setuptools cxx_std parameter
-                    return {
+            return {
                         'cxx_std': cxx_std_value,
-                        'extra_compile_args': ['-fvisibility=hidden', '-g0'],
-                        'extra_link_args': []
-                    }
+                'extra_compile_args': ['-fvisibility=hidden', '-g0'],
+                'extra_link_args': []
+            }
                 else:
                     # Use manual flag in extra_compile_args
-                    return {
+            return {
                         'cxx_std': None,
                         'extra_compile_args': [f'-std={std_flag}', '-fvisibility=hidden', '-g0'],
-                        'extra_link_args': []
-                    }
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-            pass
-
+                'extra_link_args': []
+            }
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+    
     # Ultimate fallback
     print("Warning: No supported C++ standard found, using default", file=sys.stderr)
     return {
