@@ -1,7 +1,6 @@
 # k-hhc
 
 [![CI](https://github.com/kirbyevanj/k-hhc/actions/workflows/ci.yml/badge.svg)](https://github.com/kirbyevanj/k-hhc/actions/workflows/ci.yml)
-[![Python Package](https://github.com/kirbyevanj/k-hhc/actions/workflows/python.yml/badge.svg)](https://github.com/kirbyevanj/k-hhc/actions/workflows/python.yml)
 [![Fuzzing](https://github.com/kirbyevanj/k-hhc/actions/workflows/fuzzing.yml/badge.svg)](https://github.com/kirbyevanj/k-hhc/actions/workflows/fuzzing.yml)
 [![codecov](https://codecov.io/github/kirbyevanj/k-hhc/graph/badge.svg?token=YT9H76C6MC)](https://codecov.io/github/kirbyevanj/k-hhc)
 [![PyPI](https://img.shields.io/pypi/v/k-hhc.svg)](https://pypi.org/project/k-hhc/)
