@@ -4,6 +4,12 @@
 #include <cstdlib>
 #include <iostream>
 
+#if defined(__clang__)
+#  define HHC_NO_PROFILE __attribute__((no_profile_instrument_function))
+#else
+#  define HHC_NO_PROFILE
+#endif
+
 // Platform-specific includes for stack traces
 // Check Windows first (clang-cl defines __clang__ but not __unix__)
 #if defined(_WIN32) || defined(_WIN64)
@@ -23,11 +29,10 @@
 namespace hhc::detail {
 
 #if defined(LLVM_BUILD_INSTRUMENTED)
+HHC_NO_PROFILE
 extern "C" int __llvm_profile_write_file(void);
 inline void flush_coverage_profile() {
-    //LCOV_EXCL_START
     (void)__llvm_profile_write_file();
-    //LCOV_EXCL_STOP
 }
 #else
 inline void flush_coverage_profile() {}
@@ -37,8 +42,9 @@ inline void flush_coverage_profile() {}
     /**
      * @brief Print stack trace (debug builds only)
      */
+    HHC_NO_PROFILE
     inline void print_stack_trace() {
-// LCOV_EXCL_START
+
 #if defined(HHC_HAVE_BACKTRACE)
         // Unix-like systems (Linux, macOS, BSD)
         constexpr int max_frames = 64;
@@ -85,7 +91,6 @@ inline void flush_coverage_profile() {}
         // Fallback: no stack trace available
         std::cerr << "\n[Stack trace not available on this platform]\n\n";
 #endif
-// LCOV_EXCL_STOP
     }
 
     /**
@@ -99,10 +104,10 @@ inline void flush_coverage_profile() {}
      * @param line Line number
      * @param function Function name
      */
-    [[noreturn]] inline void assertion_failed(const char* expression,
-                                              const char* file,
-                                              const int line,
-                                              const char* function) {
+    [[noreturn]] HHC_NO_PROFILE inline void assertion_failed(const char* expression,
+                                                             const char* file,
+                                                             const int line,
+                                                             const char* function) {
 #ifndef NDEBUG
         // Debug build: provide stack trace and error message
         std::cerr << "\n╔═════════════════════════════════════════════════════════════╗\n"
