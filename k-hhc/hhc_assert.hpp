@@ -22,6 +22,7 @@
 
 namespace hhc::detail {
 
+// LCOV_EXCL_START
 #if defined(LLVM_BUILD_INSTRUMENTED)
 extern "C" int __llvm_profile_write_file(void);
 inline void flush_coverage_profile() {
@@ -30,11 +31,13 @@ inline void flush_coverage_profile() {
 #else
 inline void flush_coverage_profile() {}
 #endif
+// LCOV_EXCL_STOP
 
     /**
      * @brief Print stack trace (debug builds only)
      */
     inline void print_stack_trace() {
+// LCOV_EXCL_START
 #if defined(HHC_HAVE_BACKTRACE)
         // Unix-like systems (Linux, macOS, BSD)
         constexpr int max_frames = 64;
@@ -81,6 +84,7 @@ inline void flush_coverage_profile() {}
         // Fallback: no stack trace available
         std::cerr << "\n[Stack trace not available on this platform]\n\n";
 #endif
+// LCOV_EXCL_STOP
     }
 
     /**
