@@ -153,12 +153,6 @@ jobs:
           name: sdist
           path: python/dist/*.tar.gz
 
-      - name: Upload C++ release archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: cpp-release-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ env.ARCHIVE_PATH }}
-
   # ========== CREATE GITHUB RELEASE ==========
   create-github-release:
     name: Create GitHub Release
