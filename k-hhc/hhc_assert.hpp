@@ -22,6 +22,15 @@
 
 namespace hhc::detail {
 
+#if defined(LLVM_BUILD_INSTRUMENTED)
+extern "C" int __llvm_profile_write_file(void);
+inline void flush_coverage_profile() {
+    (void)__llvm_profile_write_file();
+}
+#else
+inline void flush_coverage_profile() {}
+#endif
+
     /**
      * @brief Print stack trace (debug builds only)
      */
@@ -103,6 +112,7 @@ namespace hhc::detail {
         std::cerr << "This is a critical error indicating a bug in the HHC library.\n"
                   << "Please report this issue with the above information.\n\n";
         
+        flush_coverage_profile();
         std::abort();
 #else
         // Release build: generate trap instruction
@@ -114,6 +124,8 @@ namespace hhc::detail {
         (void)file;
         (void)line;
         (void)function;
+        
+        flush_coverage_profile();
         
         // Use compiler built-in to generate trap instruction
         #if defined(__GNUC__) || defined(__clang__)

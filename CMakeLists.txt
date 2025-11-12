@@ -31,6 +31,7 @@ if(HHC_ENABLE_COVERAGE)
     endif()
     add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
     add_link_options(-fprofile-instr-generate -fcoverage-mapping)
+    add_compile_definitions(LLVM_BUILD_INSTRUMENTED)
     set(HHC_COVERAGE_DIR ${CMAKE_BINARY_DIR}/coverage)
 endif()
 
