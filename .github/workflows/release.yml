@@ -89,6 +89,7 @@ jobs:
           CIBW_SKIP: "*-musllinux_* pp*"
           CIBW_BUILD_VERBOSITY: 1
         run: |
+          ARCHIVE_NAME="k-hhc-${{ matrix.os }}-${{ matrix.arch }}"
           python -m cibuildwheel --output-dir wheelhouse python
 
       - name: Build source distribution
