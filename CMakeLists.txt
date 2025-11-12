@@ -30,8 +30,8 @@ if(HHC_ENABLE_COVERAGE)
         message(FATAL_ERROR "Coverage support requires the Clang toolchain")
     endif()
     add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
-    add_link_options(-fprofile-instr-generate -fcoverage-mapping)
     add_compile_definitions(LLVM_BUILD_INSTRUMENTED)
+    add_link_options(-fprofile-instr-generate -fcoverage-mapping)
     set(HHC_COVERAGE_DIR ${CMAKE_BINARY_DIR}/coverage)
 endif()
 
@@ -83,7 +83,7 @@ if(HHC_ENABLE_COVERAGE)
                 -DTARGET_EXE=$<TARGET_FILE:hhc_tests>
                 -DPROFILE_DATA=${HHC_COVERAGE_DIR}/hhc_tests.profdata
                 -DOUTPUT_DIR=${HHC_COVERAGE_DIR}
-                "-DIGNORE_REGEX=\\(tests/\\|benchmarks/\\|fuzz/\\)"
+                "-DIGNORE_REGEX=\\(tests/\\|benchmarks/\\|fuzz/\\|k-hhc/hhc_assert\\.hpp\\)"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_coverage.cmake
         DEPENDS hhc_tests
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

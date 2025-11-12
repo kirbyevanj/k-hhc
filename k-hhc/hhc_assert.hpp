@@ -28,7 +28,7 @@
 
 namespace hhc::detail {
 
-#if defined(LLVM_BUILD_INSTRUMENTED)
+#ifdef LLVM_BUILD_INSTRUMENTED
 HHC_NO_PROFILE
 extern "C" int __llvm_profile_write_file(void);
 inline void flush_coverage_profile() {
@@ -42,8 +42,7 @@ inline void flush_coverage_profile() {}
     /**
      * @brief Print stack trace (debug builds only)
      */
-    HHC_NO_PROFILE
-    inline void print_stack_trace() {
+    HHC_NO_PROFILE inline void print_stack_trace() {
 
 #if defined(HHC_HAVE_BACKTRACE)
         // Unix-like systems (Linux, macOS, BSD)

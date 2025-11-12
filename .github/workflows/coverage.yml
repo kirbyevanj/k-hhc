@@ -95,19 +95,19 @@ jobs:
           
           llvm-cov report ../build-release/tests/hhc_tests ../build-debug/tests/hhc_tests \
             --instr-profile=coverage-combined.profdata \
-            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)" \
+            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/|hhc_assert\.hpp)" \
             > coverage-summary.txt
           
           llvm-cov show ../build-release/tests/hhc_tests ../build-debug/tests/hhc_tests \
             --instr-profile=coverage-combined.profdata \
             --format=html \
             --output-dir=coverage-html \
-            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)"
+            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/|hhc_assert\.hpp)"
           
           llvm-cov export ../build-release/tests/hhc_tests ../build-debug/tests/hhc_tests \
             --instr-profile=coverage-combined.profdata \
             --format=lcov \
-            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/)" \
+            --ignore-filename-regex="(tests/|benchmarks/|examples/|build/|hhc_assert\.hpp)" \
             > coverage.lcov
 
       - name: Display coverage summary
