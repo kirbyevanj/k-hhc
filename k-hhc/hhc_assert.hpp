@@ -22,16 +22,17 @@
 
 namespace hhc::detail {
 
-//LCOV_EXCL_START
 #if defined(LLVM_BUILD_INSTRUMENTED)
 extern "C" int __llvm_profile_write_file(void);
 inline void flush_coverage_profile() {
+    //LCOV_EXCL_START
     (void)__llvm_profile_write_file();
+    //LCOV_EXCL_STOP
 }
 #else
 inline void flush_coverage_profile() {}
 #endif
-//LCOV_EXCL_STOP
+
 
     /**
      * @brief Print stack trace (debug builds only)
