@@ -1,5 +1,3 @@
-# k-hhc Python Bindings
-
 Python bindings for the k-hhc (Hexahexacontadecimal) C++ library.
 
 This project is intended to be an exploration in creating performant, secure, and portable algorithms, while also being a learning experience for me. Take it with a grain of salt.
