@@ -83,7 +83,7 @@ if(HHC_ENABLE_COVERAGE)
                 -DTARGET_EXE=$<TARGET_FILE:hhc_tests>
                 -DPROFILE_DATA=${HHC_COVERAGE_DIR}/hhc_tests.profdata
                 -DOUTPUT_DIR=${HHC_COVERAGE_DIR}
-                "-DIGNORE_REGEX=\\(tests/\\|benchmarks/\\|fuzz/\\|k-hhc/hhc_assert\\.hpp\\)"
+                "-DIGNORE_REGEX=\\(tests/\\|benchmarks/\\|fuzz/\\|k-hhc/hhc_assert\\.hpp\\|k-hhc/hhc_constants\\.hpp\\)"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_coverage.cmake
         DEPENDS hhc_tests
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
