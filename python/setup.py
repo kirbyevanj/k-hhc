@@ -27,8 +27,7 @@ ext_modules = [
         # Build against the stable ABI (PEP 384)
         py_limited_api=True,
         define_macros=[("Py_LIMITED_API", "0x03070000")],  # Python 3.7+ stable ABI
-        # Target modern C++; actual compiler support provided by your CI toolchain
-        cxx_std=23,
+        cxx_std=20,
     )
 ]
 

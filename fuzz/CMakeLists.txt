@@ -10,7 +10,7 @@ foreach(_fuzzer IN ITEMS hhc_fuzz_decode32 hhc_fuzz_decode64)
     target_link_libraries(${_fuzzer} PRIVATE k-hhc)
     target_compile_options(${_fuzzer} PRIVATE ${_hhc_fuzz_flags})
     target_link_options(${_fuzzer} PRIVATE ${_hhc_fuzz_flags})
-    target_compile_features(${_fuzzer} PRIVATE cxx_std_23)
+    target_compile_features(${_fuzzer} PRIVATE cxx_std_20)
 endforeach()
 
 unset(_hhc_fuzz_flags)
