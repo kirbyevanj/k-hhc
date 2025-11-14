@@ -161,6 +161,7 @@ jobs:
           update-environment: true
 
       - name: Verify Python version
+        shell: bash
         run: |
           python --version
           PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
