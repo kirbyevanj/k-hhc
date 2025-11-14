@@ -2,8 +2,25 @@ CompileFlags:
   Add:
     # C++23 standard
     - "-std=c++23"
-    # Include the header-only library directory
-    - "-I/home/kirby/git/hhc-cpp/hhc-cpp"
+    # Python includes (for python/ directory)
+    # Try common locations - clangd will use the first one that exists
+    - "-I/usr/include/python3.13"
+    - "-I/usr/include/python3.12"
+    - "-I/usr/include/python3.11"
+    - "-I/usr/include/python3.10"
+    - "-I/usr/include/python3.9"
+    - "-I/usr/include/python3.8"
+    - "-I/usr/include/python3.7"
+    - "-I/usr/local/include/python3.13"
+    - "-I/usr/local/include/python3.12"
+    - "-I/usr/local/include/python3.11"
+    - "-I/usr/local/include/python3.10"
+    - "-I/usr/local/include/python3.9"
+    - "-I/usr/local/include/python3.8"
+    - "-I/usr/local/include/python3.7"
+    # Define Py_LIMITED_API for Limited API mode
+    - "-DPy_LIMITED_API=0x03070000"
+    - "-DPY_SSIZE_T_CLEAN"
     # Common warnings
     - "-Wall"
     - "-Wextra"

@@ -64,8 +64,9 @@ add_subdirectory(examples)
 if(HHC_ENABLE_FUZZING)
     add_subdirectory(fuzz)
 endif()
+# Python bindings are built using Makefile in python/ directory
 if(HHC_BUILD_PYTHON)
-    add_subdirectory(python)
+    message(WARNING "HHC_BUILD_PYTHON is deprecated. Use 'cd python && make' or 'python -m build' instead.")
 endif()
 
 if(HHC_ENABLE_COVERAGE)

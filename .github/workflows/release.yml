@@ -82,10 +82,12 @@ jobs:
 
       - name: Build wheels
         env:
+          # Build on Python 3.11 - the wheel will be tagged cp37-abi3 automatically
+          # due to setup() options={"bdist_wheel": {"py_limited_api": "cp37"}}
+          CIBW_BUILD: cp311-*
           CIBW_ARCHS_LINUX: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
-          CIBW_ARCHS_MACOS: ${{ matrix.arch == 'amd64' && 'x86_64' || matrix.arch }}
+          # macOS uses universal2 (set in pyproject.toml), so no override needed
           CIBW_ARCHS_WINDOWS: ${{ matrix.arch == 'amd64' && 'AMD64' || matrix.arch }}
-          CIBW_BUILD: cp311-* cp312-* cp313-*
           CIBW_SKIP: "*-musllinux_* pp*"
           CIBW_BUILD_VERBOSITY: 1
         run: |
