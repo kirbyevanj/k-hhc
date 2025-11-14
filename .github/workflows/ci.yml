@@ -156,14 +156,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: |
-            3.8
-            3.9
-            3.10
-            3.11
-            3.12
+          python-version: '3.12'
           allow-prereleases: false
           update-environment: true
+
+      - name: Verify Python version
+        run: |
+          python --version
+          PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          if [[ "$PYTHON_VERSION" != "3.12" ]]; then
+            echo "::error::Expected Python 3.12, but got $PYTHON_VERSION"
+            exit 1
+          fi
+          echo "✓ Python version verified: $PYTHON_VERSION"
 
       - name: Cache pip packages
         uses: actions/cache@v4
@@ -242,98 +247,35 @@ jobs:
             echo "✓ Confirmed abi3 wheel: $ABI3_WHEEL"
           fi
           
-          # Test with multiple Python versions (3.7, 3.9, 3.11, 3.13 or latest available)
-          # Use Python versions available on the runner
-          # Detect OS and use appropriate Python executable names
-          if [[ "${{ matrix.os }}" == "windows" ]]; then
-            PYTHON_VERSIONS=("python" "python3.11" "python3.10" "python3.9" "python3.8" "python3.7")
-          else
-            PYTHON_VERSIONS=("python3" "python3.13" "python3.11" "python3.10" "python3.9" "python3.8" "python3.7")
-          fi
+          # Test with the Python version set up by the CI action
+          PYTHON_CMD="python"
+          PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          echo "Testing with $PYTHON_CMD (version $PYTHON_VERSION)"
           
-          TESTED_VERSIONS=()
-          TEST_FAILED=false
+          # Upgrade pip and install pytest
+          python -m pip install --upgrade pip --quiet
+          python -m pip install pytest --quiet
           
-          for py_cmd in "${PYTHON_VERSIONS[@]}"; do
-            # Try to get Python version
-            PYTHON_VERSION_RAW=$($py_cmd --version 2>&1 || echo "")
-            
-            if [ -z "$PYTHON_VERSION_RAW" ]; then
-              echo "::warning::$py_cmd not available, skipping"
-              continue
-            fi
-            
-            # Extract version number
-            PYTHON_VERSION=$(echo "$PYTHON_VERSION_RAW" | grep -oE '[0-9]+\.[0-9]+' | head -1)
-            PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
-            PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
-            
-            # Verify Python version is 3.7 or higher
-            if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 7 ]; then
-              echo "Testing with $py_cmd (version $PYTHON_VERSION)"
-              TESTED_VERSIONS+=("$PYTHON_VERSION")
-              
-              # Upgrade pip and install pytest
-              $py_cmd -m pip install --upgrade pip --quiet || true
-              $py_cmd -m pip install pytest --quiet || true
-              
-              # Install the abi3 wheel
-              if $py_cmd -m pip install --force-reinstall --no-deps "$ABI3_WHEEL" > /tmp/pip_install_${PYTHON_VERSION}.log 2>&1; then
-                echo "✓ Wheel installed successfully with $py_cmd"
-                
-                # Run tests
-                cd python
-                if $py_cmd -m pytest test_hhc.py -v; then
-                  echo "✓ pytest passed with $py_cmd"
-                else
-                  echo "::error::Tests failed for $py_cmd"
-                  TEST_FAILED=true
-                fi
-                
-                if $py_cmd examples/encode_example.py; then
-                  echo "✓ encode example passed with $py_cmd"
-                else
-                  echo "::error::Encode example failed for $py_cmd"
-                  TEST_FAILED=true
-                fi
-                
-                if $py_cmd examples/decode_example.py; then
-                  echo "✓ decode example passed with $py_cmd"
-                else
-                  echo "::error::Decode example failed for $py_cmd"
-                  TEST_FAILED=true
-                fi
-                cd ..
-                
-                # Uninstall
-                $py_cmd -m pip uninstall -y k-hhc k_hhc 2>/dev/null || true
-                
-                if [ "$TEST_FAILED" = true ]; then
-                  echo "::error::Some tests failed for $py_cmd"
-                  exit 1
-                fi
-              else
-                echo "::error::Failed to install wheel with $py_cmd"
-                cat /tmp/pip_install_${PYTHON_VERSION}.log
-                exit 1
-              fi
-            else
-              echo "::warning::Skipping $py_cmd (version $PYTHON_VERSION < 3.7)"
-            fi
-            
-            # Only test with a few Python versions to avoid CI timeout
-            if [ ${#TESTED_VERSIONS[@]} -ge 2 ]; then
-              echo "✓ Tested with ${#TESTED_VERSIONS[@]} Python versions, sufficient for validation"
-              break
-            fi
-          done
+          # Install the abi3 wheel
+          python -m pip install --force-reinstall --no-deps "$ABI3_WHEEL"
+          echo "✓ Wheel installed successfully with $PYTHON_CMD"
           
-          if [ ${#TESTED_VERSIONS[@]} -eq 0 ]; then
-            echo "::error::No compatible Python versions found for testing"
-            exit 1
-          fi
+          # Run tests
+          cd python
+          python -m pytest test_hhc.py -v
+          echo "✓ pytest passed with $PYTHON_CMD"
           
-          echo "✓ Successfully tested abi3 wheel with Python versions: ${TESTED_VERSIONS[*]}"
+          python examples/encode_example.py
+          echo "✓ encode example passed with $PYTHON_CMD"
+          
+          python examples/decode_example.py
+          echo "✓ decode example passed with $PYTHON_CMD"
+          cd ..
+          
+          # Uninstall
+          python -m pip uninstall -y k-hhc k_hhc 2>/dev/null || true
+          
+          echo "✓ Successfully tested abi3 wheel with Python $PYTHON_VERSION"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
