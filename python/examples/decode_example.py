@@ -76,7 +76,7 @@ def main():
         # Handle empty string case for 0
         decode_str = "-" if encoded == "" else encoded
         decoded = k_hhc.decode_32bit(decode_str)
-        status = "✓" if original == decoded else "✗"
+        status = "OK" if original == decoded else "FAIL"
         print(f"  {original:6} -> '{encoded:6}' -> {decoded:6} {status}")
     
     print()
