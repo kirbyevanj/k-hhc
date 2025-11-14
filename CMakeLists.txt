@@ -7,7 +7,7 @@ if(NOT CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++)
 endif()
 
-project(k-hhc VERSION 1.0.6 LANGUAGES CXX)
+project(k-hhc VERSION 1.0.7 LANGUAGES CXX)
 
 option(HHC_ENABLE_COVERAGE "Enable LLVM coverage instrumentation" OFF)
 
@@ -20,8 +20,8 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # Generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Set C++23 standard
-set(CMAKE_CXX_STANDARD 23)
+# Set C++20 standard
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -64,8 +64,9 @@ add_subdirectory(examples)
 if(HHC_ENABLE_FUZZING)
     add_subdirectory(fuzz)
 endif()
+# Python bindings are built using Makefile in python/ directory
 if(HHC_BUILD_PYTHON)
-    add_subdirectory(python)
+    message(WARNING "HHC_BUILD_PYTHON is deprecated. Use 'cd python && make' or 'python -m build' instead.")
 endif()
 
 if(HHC_ENABLE_COVERAGE)

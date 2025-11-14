@@ -1,35 +1,36 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "pybind11>=2.6.0"]
+requires = [
+  "setuptools>=68",
+  "wheel>=0.41",
+  "pybind11>=2.11"  # build-time only; do not add to [project].dependencies
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "k-hhc"
-version = "1.0.6"
+version = "1.0.7"
 description = "Python bindings for Hexahexacontadecimal (base66) encoding"
 readme = "README.md"
-requires-python = ">=3.6"
-license = {file = "LICENSE"}
+requires-python = ">=3.7"
+license = {text = "Apache-2.0"}
 authors = [
-    {name = "Evan Kirby"}
+  { name = "Evan Kirby" }
 ]
 keywords = ["encoding", "codec", "hhc", "hexahexacontadecimal", "base66", "performance"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: C++",
-    "Operating System :: OS Independent",
-    "Topic :: Software Development :: Libraries",
-]
-dependencies = [
-    "pybind11>=2.6.0",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: C++",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries",
 ]
 
 [project.urls]
@@ -37,29 +38,36 @@ Homepage = "https://github.com/kirbyevanj/k-hhc"
 Repository = "https://github.com/kirbyevanj/k-hhc"
 Issues = "https://github.com/kirbyevanj/k-hhc/issues"
 
+[tool.setuptools]
+# Disable auto-discovery to avoid picking up test files
+# This is a C extension package, so we don't need package discovery
+packages = []
+py-modules = []
+
+[tool.setuptools.package-data]
+"*" = ["*.hpp"]
+
 [tool.cibuildwheel]
-build = ["cp36-*", "cp37-*", "cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+# Build on ONE CPython per platform; abi3 wheel will be tagged cp37-abi3 by bdist_wheel
+build = ["cp311-*"]
 skip = ["*-musllinux_*", "pp*"]
 build-verbosity = 1
 
-# Note: Native runners used, no cross-compilation needed
 [tool.cibuildwheel.linux]
 archs = ["x86_64", "aarch64"]
-# Use manylinux_2_28 which has GCC 12+ and better C++23 support
+# Use newer manylinux for modern toolchains and C++23 support
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
-# Install clang for optimal C++23 support (--nogpgcheck to avoid GPG issues in containers)
+# Install clang and use it (better C++23 support than GCC 8)
 before-all = "dnf install -y --nogpgcheck clang"
-environment = { CC="clang", CXX="clang++" }
+environment = { CC = "clang", CXX = "clang++" }
 
 [tool.cibuildwheel.macos]
-archs = ["x86_64", "arm64"]
-# Use clang++ which has better C++23 support on macOS
-environment = { CC="clang", CXX="clang++" }
+# Build a single universal2 wheel (x86_64 + arm64)
+archs = ["universal2"]
+environment = { CC = "clang", CXX = "clang++" }
 
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-# Use clang-cl for better C++23 support (installed at job level)
-environment = { CC="clang-cl", CXX="clang-cl" }
-repair-wheel-command = ""
-
+# Use clang-cl (provided by VS Build Tools on GitHub runners)
+environment = { CC = "clang-cl", CXX = "clang-cl" }

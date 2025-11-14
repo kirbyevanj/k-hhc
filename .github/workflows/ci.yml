@@ -156,14 +156,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: |
-            3.8
-            3.9
-            3.10
-            3.11
-            3.12
+          python-version: '3.12'
           allow-prereleases: false
           update-environment: true
+
+      - name: Verify Python version
+        shell: bash
+        run: |
+          python --version
+          PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          if [[ "$PYTHON_VERSION" != "3.12" ]]; then
+            echo "::error::Expected Python 3.12, but got $PYTHON_VERSION"
+            exit 1
+          fi
+          echo "✓ Python version verified: $PYTHON_VERSION"
 
       - name: Cache pip packages
         uses: actions/cache@v4
@@ -186,10 +192,12 @@ jobs:
 
       - name: Build wheels
         env:
+          # Build on Python 3.11 - the wheel will be tagged cp37-abi3 automatically
+          # due to setup() options={"bdist_wheel": {"py_limited_api": "cp37"}}
+          CIBW_BUILD: cp311-*
           CIBW_ARCHS_LINUX: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
-          CIBW_ARCHS_MACOS: ${{ matrix.arch == 'amd64' && 'x86_64' || matrix.arch }}
+          # macOS uses universal2 (set in pyproject.toml), so no override needed
           CIBW_ARCHS_WINDOWS: ${{ matrix.arch == 'amd64' && 'AMD64' || matrix.arch }}
-          CIBW_BUILD: cp38-* cp39-* cp310-* cp311-* cp312-*
           CIBW_SKIP: "*-musllinux_* pp*"
           CIBW_BUILD_VERBOSITY: 1
         run: |
@@ -204,66 +212,71 @@ jobs:
       - name: Test wheels
         shell: bash
         run: |
-          # Upgrade pip for all Python versions and install pytest
-          echo "Installing pytest for all Python versions..."
-          for py in python3.8 python3.9 python3.10 python3.11 python3.12 python; do
-            if command -v $py &> /dev/null; then
-              echo "Setting up $py"
-              $py -m pip install --upgrade pip --quiet
-              $py -m pip install pytest --quiet
-            fi
-          done
-          echo "✓ Setup complete"
+          # List all wheels to debug
+          echo "Wheels in wheelhouse:"
+          ls -la wheelhouse/ || find wheelhouse -name "*.whl" || true
           
-          for wheel in wheelhouse/*.whl; do
-            echo "Testing $wheel"
-            
-            # Extract Python version from wheel filename
-            if [[ $wheel =~ cp([0-9]+)- ]]; then
-              pyver="${BASH_REMATCH[1]}"
-              pymajor="${pyver:0:1}"
-              pyminor="${pyver:1}"
-              
-              # Find matching Python executable
-              if command -v python${pymajor}.${pyminor} &> /dev/null; then
-                PYTHON_CMD="python${pymajor}.${pyminor}"
-              else
-                echo "::warning::Python ${pymajor}.${pyminor} not found, skipping $wheel"
-                continue
-              fi
-            else
-              PYTHON_CMD="python"
-            fi
-            
-            echo "Using $PYTHON_CMD for $wheel"
-            
-            # Try to install wheel - will fail if incompatible with platform
-            if $PYTHON_CMD -m pip install --force-reinstall --no-deps "$wheel" > /tmp/pip_install.log 2>&1; then
-              echo "✓ Wheel installed successfully"
-              
-              # Run tests
-              cd python
-              if ! $PYTHON_CMD -m pytest test_hhc.py -v; then
-                echo "::error::Tests failed for $wheel"
-                exit 1
-              fi
-              if ! $PYTHON_CMD examples/encode_example.py; then
-                echo "::error::Encode example failed for $wheel"
-                exit 1
-              fi
-              if ! $PYTHON_CMD examples/decode_example.py; then
-                echo "::error::Decode example failed for $wheel"
-                exit 1
-              fi
-              cd ..
-              
-              # Uninstall
-              $PYTHON_CMD -m pip uninstall -y hhc
-            else
-              echo "::warning::Wheel $wheel not compatible with $PYTHON_CMD on this platform (see log for details), skipping"
-              cat /tmp/pip_install.log | head -5
-            fi
-          done
+          # Find the abi3 wheel (should be only one per platform)
+          # Note: We build on cp38-*, but due to setup.cfg [bdist_wheel] py-limited-api = cp37,
+          # the wheel is automatically tagged as cp37-abi3, making it compatible with Python 3.7+
+          # Try multiple patterns to handle different platforms
+          ABI3_WHEEL=$(find wheelhouse -name "*-cp37-abi3-*.whl" 2>/dev/null | head -1)
+          
+          # If not found with cp37-abi3, try just abi3
+          if [ -z "$ABI3_WHEEL" ]; then
+            ABI3_WHEEL=$(find wheelhouse -name "*-abi3-*.whl" 2>/dev/null | head -1)
+          fi
+          
+          # If still not found, try to find any wheel (fallback)
+          if [ -z "$ABI3_WHEEL" ]; then
+            ABI3_WHEEL=$(find wheelhouse -name "*.whl" 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$ABI3_WHEEL" ]; then
+            echo "::error::No wheel found in wheelhouse/"
+            echo "Contents of wheelhouse:"
+            ls -la wheelhouse/ 2>/dev/null || echo "wheelhouse directory not found"
+            exit 1
+          fi
+          
+          echo "Found wheel: $ABI3_WHEEL"
+          
+          # Verify it's an abi3 wheel
+          if [[ "$ABI3_WHEEL" != *"abi3"* ]] && [[ "$ABI3_WHEEL" != *"cp37"* ]]; then
+            echo "::warning::Wheel may not be abi3: $ABI3_WHEEL"
+          else
+            echo "✓ Confirmed abi3 wheel: $ABI3_WHEEL"
+          fi
+          
+          # Test with the Python version set up by the CI action
+          PYTHON_CMD="python"
+          PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          echo "Testing with $PYTHON_CMD (version $PYTHON_VERSION)"
+          
+          # Upgrade pip and install pytest
+          python -m pip install --upgrade pip --quiet
+          python -m pip install pytest --quiet
+          
+          # Install the abi3 wheel
+          python -m pip install --force-reinstall --no-deps "$ABI3_WHEEL"
+          echo "✓ Wheel installed successfully with $PYTHON_CMD"
+          
+          # Run tests
+          cd python
+          python -m pytest test_hhc.py -v
+          echo "✓ pytest passed with $PYTHON_CMD"
+          
+          python examples/encode_example.py
+          echo "✓ encode example passed with $PYTHON_CMD"
+          
+          python examples/decode_example.py
+          echo "✓ decode example passed with $PYTHON_CMD"
+          cd ..
+          
+          # Uninstall
+          python -m pip uninstall -y k-hhc k_hhc 2>/dev/null || true
+          
+          echo "✓ Successfully tested abi3 wheel with Python $PYTHON_VERSION"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
