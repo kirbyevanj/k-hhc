@@ -32,15 +32,9 @@ jobs:
             runs-on: ubuntu-latest
             experimental: false
 
-          # macOS AMD64
+          # macOS universal2 (covers both x86_64 and arm64)
           - os: macos
-            arch: amd64
-            runs-on: macos-13
-            experimental: false
-
-          # macOS ARM64
-          - os: macos
-            arch: arm64
+            arch: universal2
             runs-on: macos-14
             experimental: false
 
