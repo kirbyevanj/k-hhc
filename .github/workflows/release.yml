@@ -269,17 +269,16 @@ jobs:
 
   release-status:
     name: Release Status
-    runs-on: ubuntu-latest
+    # Include all jobs that may run or be skipped; skipped results are still accessible.
     needs: [build-release-artifacts, create-github-release, publish-pypi, publish-testpypi]
+    runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Summarize
+        shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG="${{ github.event.inputs.tag }}"
-          else
-            TAG="${{ github.ref_name }}"
-          fi
+          set -euo pipefail
+          TAG="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}"
           echo "## Release Summary for $TAG"
           echo
           echo "Artifacts build: ${{ needs.build-release-artifacts.result }}"
@@ -291,6 +290,7 @@ jobs:
             echo "PyPI publish: ${{ needs.publish-pypi.result }}"
           fi
           echo
+          # Fail only if any required job actually failed (not skipped)
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
             echo "::error::Release failed!"
             exit 1
