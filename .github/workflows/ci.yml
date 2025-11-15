@@ -165,6 +165,8 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64"
           # Prefer modern base images for toolchains
           CIBW_MANYLINUX_X86_64: "manylinux_2_28"
+          # Use musllinux_1_2 for GCC 11+ which supports -std=c++20 (musllinux_1_1 has GCC 9)
+          CIBW_MUSLLINUX_X86_64: "musllinux_1_2"
           # Override before-all from pyproject.toml: manylinux doesn't need clang (use gcc)
           CIBW_BEFORE_ALL_LINUX: ""
           # musllinux needs libexecinfo to provide execinfo.h/backtrace(), and link with -lexecinfo
