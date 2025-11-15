@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "k-hhc"
-version = "1.0.7"
+version = "1.0.8"
 description = "Python bindings for Hexahexacontadecimal (base66) encoding"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -55,12 +55,11 @@ build-verbosity = 1
 
 [tool.cibuildwheel.linux]
 archs = ["x86_64", "aarch64"]
-# Use newer manylinux for modern toolchains and C++23 support
+# Use newer manylinux for modern toolchains and C++20 support
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
-# Install clang and use it (better C++23 support than GCC 8)
-before-all = "dnf install -y --nogpgcheck clang"
-environment = { CC = "clang", CXX = "clang++" }
+# Note: before-all and environment are set in CI workflow to allow
+# platform-specific overrides (e.g., musllinux uses apk, not dnf)
 
 [tool.cibuildwheel.macos]
 # Build a single universal2 wheel (x86_64 + arm64)

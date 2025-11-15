@@ -19,11 +19,36 @@
     #include <windows.h>
     #include <dbghelp.h>
     #define HHC_HAVE_STACKWALK 1
+    #define HHC_HAVE_BACKTRACE 0  // Windows doesn't use backtrace
     #pragma comment(lib, "dbghelp.lib")
 #elif defined(__unix__) || defined(__APPLE__) || defined(__linux__) || defined(__MACH__)
-    #include <execinfo.h>
+    // Feature detection for execinfo.h (not available on musl without libexecinfo)
+    #if defined(__has_include)
+        #if __has_include(<execinfo.h>)
+            #include <execinfo.h>
+            #define HHC_HAVE_BACKTRACE 1
+        #else
+            // execinfo.h not available (e.g., musl without libexecinfo-dev)
+            #define HHC_HAVE_BACKTRACE 0
+        #endif
+    #else
+        // Fallback for compilers without __has_include (pre-C++17)
+        // Assume execinfo.h is available on glibc systems
+        #if defined(__GLIBC__)
+            #include <execinfo.h>
+            #define HHC_HAVE_BACKTRACE 1
+        #else
+            // On non-glibc systems (e.g., musl), execinfo.h may not be available
+            // unless libexecinfo is installed and linked
+            #define HHC_HAVE_BACKTRACE 0
+        #endif
+    #endif
     #include <unistd.h>
-    #define HHC_HAVE_BACKTRACE 1
+    #define HHC_HAVE_STACKWALK 0  // Unix systems don't use Windows stack walk
+#else
+    // Unknown platform
+    #define HHC_HAVE_BACKTRACE 0
+    #define HHC_HAVE_STACKWALK 0
 #endif
 
 namespace hhc::detail {
@@ -44,8 +69,8 @@ inline void flush_coverage_profile() {}
      */
     HHC_NO_PROFILE inline void print_stack_trace() {
 
-#if defined(HHC_HAVE_BACKTRACE)
-        // Unix-like systems (Linux, macOS, BSD)
+#if HHC_HAVE_BACKTRACE
+        // Unix-like systems (Linux, macOS, BSD) with execinfo.h available
         constexpr int max_frames = 64;
         void* buffer[max_frames];
         
@@ -55,8 +80,8 @@ inline void flush_coverage_profile() {}
         backtrace_symbols_fd(buffer, frame_count, STDERR_FILENO);
         std::cerr << "===================\n\n";
         
-#elif defined(HHC_HAVE_STACKWALK)
-        // Windows
+#elif HHC_HAVE_STACKWALK
+        // Windows stack walk
         constexpr int max_frames = 64;
         void* stack[max_frames];
         
@@ -87,7 +112,7 @@ inline void flush_coverage_profile() {}
         SymCleanup(process);
         
 #else
-        // Fallback: no stack trace available
+        // Fallback: no stack trace available (e.g., musl without libexecinfo)
         std::cerr << "\n[Stack trace not available on this platform]\n\n";
 #endif
     }

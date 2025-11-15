@@ -196,7 +196,7 @@ namespace hhc {
 
         // If the string is not padded, pad it (no bounds check needed - shorter strings are always valid)
         if (length < HHC_32BIT_ENCODED_LENGTH) {
-            char padded_string[HHC_32BIT_STRING_LENGTH];
+            char padded_string[HHC_32BIT_STRING_LENGTH] = {};  // Initialize to all zeros
             const std::size_t padding = HHC_32BIT_ENCODED_LENGTH - length;
 
             HHC_ASSERT(padding <= HHC_32BIT_STRING_LENGTH);
@@ -234,7 +234,7 @@ namespace hhc {
 
         // If the string is not padded, pad it (no bounds check needed - shorter strings are always valid)
         if (length < HHC_64BIT_ENCODED_LENGTH) {
-            char padded_string[HHC_64BIT_STRING_LENGTH];
+            char padded_string[HHC_64BIT_STRING_LENGTH] = {};  // Initialize to all zeros
             const std::size_t padding = HHC_64BIT_ENCODED_LENGTH - length;
 
             HHC_ASSERT(padding <= HHC_64BIT_STRING_LENGTH);

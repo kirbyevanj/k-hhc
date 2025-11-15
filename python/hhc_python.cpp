@@ -174,7 +174,7 @@ static PyObject* k_hhc_encode_padded_64bit(PyObject*, PyObject* arg) {
 
     try {
         char result[HHC_64BIT_STRING_LENGTH] = {};
-        hhc_64bit_encode_padded(static_cast<uint64_t>(v), result);
+        hhc_64bit_encode_padded(v, result);
         return PyUnicode_FromStringAndSize(result, HHC_64BIT_ENCODED_LENGTH);
     } catch (...) {
         translate_std_exception();

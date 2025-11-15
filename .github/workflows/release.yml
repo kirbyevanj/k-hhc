@@ -7,16 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release (e.g., v1.0.0)'
+        description: 'Tag to release (e.g., v1.0.0 or v1.0.0-stg)'
         required: true
         type: string
 
 permissions:
   contents: write
-  id-token: write  # For PyPI trusted publishing
+  id-token: write  # For PyPI/TestPyPI trusted publishing
 
 jobs:
-  # ========== BUILD RELEASE ARTIFACTS ==========
   build-release-artifacts:
     name: Build Release Artifacts (${{ matrix.os }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.runs-on }}
@@ -26,25 +25,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux AMD64
           - os: linux
             arch: amd64
             runs-on: ubuntu-latest
             experimental: false
-
-          # macOS AMD64
           - os: macos
-            arch: amd64
-            runs-on: macos-13
-            experimental: false
-
-          # macOS ARM64
-          - os: macos
-            arch: arm64
+            arch: universal2
             runs-on: macos-14
             experimental: false
-
-          # Windows AMD64
           - os: windows
             arch: amd64
             runs-on: windows-latest
@@ -54,7 +42,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Full history for changelog
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -80,15 +68,15 @@ jobs:
           choco install llvm --version=19.1.7 --allow-downgrade -y
           echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Build wheels
+      - name: Build wheels (include musllinux for Linux)
         env:
-          # Build on Python 3.11 - the wheel will be tagged cp37-abi3 automatically
-          # due to setup() options={"bdist_wheel": {"py_limited_api": "cp37"}}
           CIBW_BUILD: cp311-*
           CIBW_ARCHS_LINUX: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
-          # macOS uses universal2 (set in pyproject.toml), so no override needed
           CIBW_ARCHS_WINDOWS: ${{ matrix.arch == 'amd64' && 'AMD64' || matrix.arch }}
-          CIBW_SKIP: "*-musllinux_* pp*"
+          CIBW_SKIP: "pp*"
+          CIBW_MUSLLINUX_X86_64: "musllinux_1_2"
+          CIBW_BEFORE_BUILD_MUSLLINUX: "apk update && apk add --no-cache libexecinfo-dev"
+          CIBW_ENVIRONMENT_MUSLLINUX: "LDFLAGS='-lexecinfo'"
           CIBW_BUILD_VERBOSITY: 1
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
@@ -136,7 +124,7 @@ jobs:
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++
 
-      - name: Build and install
+      - name: Build and install (C++)
         run: |
           cmake --build build --parallel
           cmake --install build
@@ -154,9 +142,9 @@ jobs:
           name: sdist
           path: python/dist/*.tar.gz
 
-  # ========== CREATE GITHUB RELEASE ==========
   create-github-release:
     name: Create GitHub Release
+    if: ${{ (github.event_name == 'workflow_dispatch' && !contains(github.event.inputs.tag, '-stg')) || (github.event_name != 'workflow_dispatch' && !contains(github.ref_name, '-stg')) }}
     needs: build-release-artifacts
     runs-on: ubuntu-latest
     outputs:
@@ -167,7 +155,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
       - name: Get tag name
         id: get_tag
         run: |
@@ -178,68 +165,44 @@ jobs:
           fi
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "version=${TAG#v}" >> $GITHUB_OUTPUT
-
       - name: Generate changelog
         id: changelog
         run: |
-          # Get previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 ${{ steps.get_tag.outputs.tag }}^ 2>/dev/null || echo "")
-          
           if [ -z "$PREV_TAG" ]; then
             CHANGELOG="Initial release"
           else
             CHANGELOG=$(git log "${PREV_TAG}..${{ steps.get_tag.outputs.tag }}" \
               --pretty=format:"- %s (%h)" \
-              --no-merges)
+              --no-merges || echo "No changes found")
           fi
-          
-          # Write to file to handle multiline
-          cat > changelog.md << EOF
-          ## What's Changed
-          
-          ${CHANGELOG}
-          
-          ## Installation
-          
-          ### Python Package
-          \`\`\`bash
-          pip install k-hhc==${{ steps.get_tag.outputs.version }}
-          pip install <your-platforms-python-wheel-name>.whl
-          pip install <source-distribution-name>.tar.gz
-          \`\`\`
-          
-          ### C++ Library
-          Just clone https://github.com/kirbyevanj/k-hhc.git and build the project.
-          
-          ## Checksums
-          
-          See \`checksums.txt\` in the assets for SHA256 checksums of all files.
-          EOF
-
+          VERSION="${{ steps.get_tag.outputs.version }}"
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "$CHANGELOG"
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```bash'
+            echo "pip install k-hhc==${VERSION}"
+            echo '```'
+            echo ""
+            echo "## Checksums"
+            echo "See \`checksums.txt\` in the assets for SHA256 checksums."
+          } > changelog.md
       - name: Download all artifacts
         uses: actions/download-artifact@v6
         with:
           path: artifacts
-
       - name: Organize release assets
         run: |
           mkdir -p release-assets
-          
-          # Move all wheels
           find artifacts -name "*.whl" -exec mv {} release-assets/ \;
-          
-          # Move source distribution
           find artifacts -name "*.tar.gz" -path "*/sdist/*" -exec mv {} release-assets/ \;
-          
-          # Move C++ archives
-          find artifacts -name "*.tar.gz" -path "*/cpp-release-*/*" -exec mv {} release-assets/ \;
-          find artifacts -name "*.zip" -path "*/cpp-release-*/*" -exec mv {} release-assets/ \;
-          
-          # Generate checksums
           cd release-assets
           sha256sum * > checksums.txt
           cd ..
-
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -252,77 +215,92 @@ jobs:
           files: release-assets/*
           fail_on_unmatched_files: false
 
-  # ========== PUBLISH TO PYPI ==========
-  publish-pypi:
-    name: Publish to PyPI
-    needs: [build-release-artifacts, create-github-release]
+  publish-testpypi:
+    name: Publish to TestPyPI (staging tag)
+    if: ${{ (github.event_name == 'workflow_dispatch' && contains(github.event.inputs.tag, '-stg')) || (github.event_name != 'workflow_dispatch' && contains(github.ref_name, '-stg')) }}
+    needs: build-release-artifacts
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/k-hhc/
-    permissions:
-      id-token: write
     steps:
-      - name: Download Python packages
+      - name: Download Python wheels
         uses: actions/download-artifact@v6
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
-
       - name: Download source distribution
         uses: actions/download-artifact@v6
         with:
           name: sdist
           path: dist
-
+        continue-on-error: true
       - name: List packages
         run: ls -la dist/
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+          verbose: true
 
+  publish-pypi:
+    name: Publish to PyPI (production tag)
+    if: ${{ (github.event_name == 'workflow_dispatch' && !contains(github.event.inputs.tag, '-stg')) || (github.event_name != 'workflow_dispatch' && !contains(github.ref_name, '-stg')) }}
+    needs: [build-release-artifacts, create-github-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Python wheels
+        uses: actions/download-artifact@v6
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+      - name: Download source distribution
+        uses: actions/download-artifact@v6
+        with:
+          name: sdist
+          path: dist
+        continue-on-error: true
+      - name: List packages
+        run: ls -la dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
           verbose: true
 
-  # ========== RELEASE STATUS CHECK ==========
   release-status:
     name: Release Status
+    # Include all jobs that may run or be skipped; skipped results are still accessible.
+    needs: [build-release-artifacts, create-github-release, publish-pypi, publish-testpypi]
     runs-on: ubuntu-latest
-    needs: [build-release-artifacts, create-github-release, publish-pypi]
     if: always()
     steps:
-      - name: Check release status
+      - name: Summarize
+        shell: bash
         run: |
-          echo "## Release Summary"
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "## Release Summary for $TAG"
           echo
-          
-          if [[ "${{ needs.build-release-artifacts.result }}" == "success" ]]; then
-            echo "✅ Build artifacts: Success"
+          echo "Artifacts build: ${{ needs.build-release-artifacts.result }}"
+          if [[ "$TAG" == *"-stg"* ]]; then
+            echo "GitHub release: (skipped for staging)"
+            echo "TestPyPI publish: ${{ needs.publish-testpypi.result }}"
           else
-            echo "❌ Build artifacts: ${{ needs.build-release-artifacts.result }}"
+            echo "GitHub release: ${{ needs.create-github-release.result }}"
+            echo "PyPI publish: ${{ needs.publish-pypi.result }}"
           fi
-          
-          if [[ "${{ needs.create-github-release.result }}" == "success" ]]; then
-            echo "✅ GitHub release: Success"
-          else
-            echo "❌ GitHub release: ${{ needs.create-github-release.result }}"
-          fi
-          
-          if [[ "${{ needs.publish-pypi.result }}" == "success" ]]; then
-            echo "✅ PyPI publish: Success"
-          elif [[ "${{ needs.publish-pypi.result }}" == "skipped" ]]; then
-            echo "⏭️ PyPI publish: Skipped"
-          else
-            echo "❌ PyPI publish: ${{ needs.publish-pypi.result }}"
-          fi
-          
-          # Overall status
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            echo
+          echo
+          # Fail only if any required job actually failed (not skipped)
+          if [[ "${{ needs.build-release-artifacts.result }}" == "failure" ]] || \
+             [[ "${{ needs.publish-testpypi.result }}" == "failure" ]] || \
+             [[ "${{ needs.publish-pypi.result }}" == "failure" ]]; then
             echo "::error::Release failed!"
             exit 1
           else
-            echo
-            echo "🎉 Release completed successfully!"
+            echo "🎉 Release workflow completed."
           fi
