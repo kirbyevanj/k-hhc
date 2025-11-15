@@ -174,22 +174,23 @@ jobs:
           else
             CHANGELOG=$(git log "${PREV_TAG}..${{ steps.get_tag.outputs.tag }}" \
               --pretty=format:"- %s (%h)" \
-              --no-merges)
+              --no-merges || echo "No changes found")
           fi
-          cat > changelog.md << EOF
-          ## What's Changed
-          
-          ${CHANGELOG}
-          
-          ## Installation
-          
-          \`\`\`bash
-          pip install k-hhc==${{ steps.get_tag.outputs.version }}
-          \`\`\`
-          
-          ## Checksums
-          See \`checksums.txt\` in the assets for SHA256 checksums.
-          EOF
+          VERSION="${{ steps.get_tag.outputs.version }}"
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "$CHANGELOG"
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```bash'
+            echo "pip install k-hhc==${VERSION}"
+            echo '```'
+            echo ""
+            echo "## Checksums"
+            echo "See \`checksums.txt\` in the assets for SHA256 checksums."
+          } > changelog.md
       - name: Download all artifacts
         uses: actions/download-artifact@v6
         with:
@@ -278,7 +279,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
           echo "## Release Summary for $TAG"
           echo
           echo "Artifacts build: ${{ needs.build-release-artifacts.result }}"
@@ -291,8 +296,11 @@ jobs:
           fi
           echo
           # Fail only if any required job actually failed (not skipped)
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+          if [[ "${{ needs.build-release-artifacts.result }}" == "failure" ]] || \
+             [[ "${{ needs.publish-testpypi.result }}" == "failure" ]] || \
+             [[ "${{ needs.publish-pypi.result }}" == "failure" ]]; then
             echo "::error::Release failed!"
             exit 1
           else
             echo "🎉 Release workflow completed."
+          fi
