@@ -7,7 +7,6 @@ on:
     branches: [ master, staging, develop ]
   workflow_dispatch:
 
-# Cancel in-progress runs for the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -16,7 +15,6 @@ permissions:
   contents: read
 
 jobs:
-  # ========== LINT ==========
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -24,12 +22,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
       - name: Setup clang-tidy
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-tidy clang
-
       - name: Configure CMake
         env:
           CC: clang
@@ -38,14 +34,11 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
       - name: Run clang-tidy
         run: |
-          # Only lint the main library headers (not tests/benchmarks which need external deps)
           find k-hhc -name "*.cpp" -o -name "*.hpp" | \
           xargs -P$(nproc) clang-tidy -p build --warnings-as-errors=""
 
-  # ========== C++ BUILD & TEST (Linux x86_64 + Windows amd64 only) ==========
   cpp-build-test:
     name: C++ Build & Test (${{ matrix.os }} ${{ matrix.arch }})
     needs: lint
@@ -64,37 +57,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
       - name: Setup build env (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build
-
       - name: Setup build env (Windows)
         if: runner.os == 'Windows'
         run: |
           choco install cmake ninja -y
-
-      # Use -S . to avoid accidental "/" source dir, and use cmd without bash-style continuations
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
         shell: cmd
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
       - name: Configure CMake (Unix)
         if: runner.os != 'Windows'
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release
-
       - name: Build
         run: cmake --build build --parallel
-
       - name: Run tests
         working-directory: build
         run: ctest --output-on-failure --parallel
-
       - name: Run examples
         working-directory: build
         shell: bash
@@ -109,7 +94,6 @@ jobs:
             ./examples/hhc_decode_example
             ./examples/hhc_assert_example
           fi
-
       - name: Upload C++ test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -117,7 +101,6 @@ jobs:
           name: test-results-cpp-${{ matrix.os }}-${{ matrix.arch }}
           path: build/Testing/
 
-  # ========== PYTHON WHEELS (cibuildwheel) ==========
   python-wheels:
     name: Python Wheels (${{ matrix.label }})
     needs: lint
@@ -127,17 +110,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux x86_64 (manylinux + musllinux)
           - label: linux-x86_64
             os: linux
             runs-on: ubuntu-latest
             cibw_build: "cp311-manylinux_x86_64 cp311-musllinux_x86_64"
-          # macOS universal2
           - label: macos-universal2
             os: macos
             runs-on: macos-14
             cibw_build: "cp311-macosx_universal2"
-          # Windows AMD64
           - label: windows-amd64
             os: windows
             runs-on: windows-latest
@@ -145,38 +125,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
       - name: Set up Python (build driver)
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
-
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
           pip install build cibuildwheel==2.16.2
-
       - name: Build & Test wheels (cibuildwheel)
         env:
-          # Build targets per matrix entry (abi3 wheel produced from cp311)
           CIBW_BUILD: ${{ matrix.cibw_build }}
-          # Only x86_64 on Linux runners
+          # Restrict to x86_64
           CIBW_ARCHS_LINUX: "x86_64"
-          # Prefer modern base images for toolchains
+          # Use modern manylinux
           CIBW_MANYLINUX_X86_64: "manylinux_2_28"
-          # Use musllinux_1_2 for GCC 11+ which supports -std=c++20 (musllinux_1_1 has GCC 9)
+          # Force newer musllinux image with GCC supporting -std=c++20
           CIBW_MUSLLINUX_X86_64: "musllinux_1_2"
-          # Override before-all from pyproject.toml: manylinux doesn't need clang (use gcc)
-          CIBW_BEFORE_ALL_LINUX: ""
-          # musllinux needs libexecinfo to provide execinfo.h/backtrace(), and link with -lexecinfo
-          # Use before-build instead of before-all to avoid dnf/apk conflicts
+          # Provide execinfo on musllinux and link it
           CIBW_BEFORE_BUILD_MUSLLINUX: "apk update && apk add --no-cache libexecinfo-dev"
           CIBW_ENVIRONMENT_LINUX: "CC=gcc CXX=g++"
           CIBW_ENVIRONMENT_MUSLLINUX: "CC=gcc CXX=g++ LDFLAGS='-lexecinfo'"
           # Skip PyPy
           CIBW_SKIP: "pp*"
-          # Tests run inside the appropriate container/venv per wheel
           CIBW_TEST_REQUIRES: "pytest"
           CIBW_TEST_COMMAND: >
             python -m pytest -q {project}/python/test_hhc.py &&
@@ -186,19 +158,16 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
-
       - name: Build source distribution (single Linux x86_64)
         if: matrix.label == 'linux-x86_64'
         run: |
           cd python
           python -m build --sdist
-
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.label }}
           path: wheelhouse/*.whl
-
       - name: Upload sdist
         if: matrix.label == 'linux-x86_64'
         uses: actions/upload-artifact@v4
@@ -206,7 +175,6 @@ jobs:
           name: sdist
           path: python/dist/*.tar.gz
 
-  # ========== macOS x86_64 Smoke Test (Intel host) ==========
   mac-x86-smoke:
     name: macOS x86_64 Smoke Test (Intel host)
     needs: python-wheels
@@ -215,22 +183,18 @@ jobs:
     steps:
       - name: Checkout (for tests only)
         uses: actions/checkout@v5
-
       - name: Download universal2 wheel artifact
         uses: actions/download-artifact@v4
         with:
           name: wheels-macos-universal2
           path: wheels
-
       - name: List wheels
         run: ls -la wheels
-
       - name: Set up Python (3.12 Intel)
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
-
       - name: Install & smoke test
         run: |
           WHEEL=$(ls wheels/*universal2*.whl | head -1 || true)
