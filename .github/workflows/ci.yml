@@ -76,7 +76,14 @@ jobs:
         run: |
           choco install cmake ninja -y
 
-      - name: Configure CMake
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (Unix)
+        if: runner.os != 'Windows'
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release
@@ -152,9 +159,17 @@ jobs:
 
       - name: Build & Test wheels (cibuildwheel)
         env:
+          # Explicit selection per matrix entry (abi3 built from cp311)
           CIBW_BUILD: ${{ matrix.cibw_build }}
+          # Disable any before-all hooks defined in pyproject to avoid dnf/yum/apk installs
+          CIBW_BEFORE_ALL: ":"
+          CIBW_BEFORE_ALL_LINUX: ":"
+          CIBW_BEFORE_ALL_MUSLLINUX: ":"
+          # Skip PyPy
           CIBW_SKIP: "pp*"
+          # musllinux image versions
           CIBW_MUSLLINUX_X86_64: "musllinux_1_2"
+          # Tests run inside the wheel's build environment/container
           CIBW_TEST_REQUIRES: "pytest"
           CIBW_TEST_COMMAND: >
             python -m pytest -q {project}/python/test_hhc.py &&
@@ -217,15 +232,15 @@ jobs:
             ls -la wheels
             exit 1
           fi
-            echo "Using wheel: $WHEEL"
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-            python -m pip install "$WHEEL"
-            python -c "import k_hhc, platform; print('k_hhc version:', getattr(k_hhc,'__version__','?'),'arch:',platform.machine())"
-            python python/examples/encode_example.py
-            python python/examples/decode_example.py
-            python -m pytest -q python/test_hhc.py
-            echo "✓ macOS x86_64 smoke test passed"
+          echo "Using wheel: $WHEEL"
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          python -m pip install "$WHEEL"
+          python -c "import k_hhc, platform; print('k_hhc version:', getattr(k_hhc,'__version__','?'),'arch:',platform.machine())"
+          python python/examples/encode_example.py
+          python python/examples/decode_example.py
+          python -m pytest -q python/test_hhc.py
+          echo "✓ macOS x86_64 smoke test passed"
 
   # ========== FINAL STATUS CHECK ==========
   ci-status:
