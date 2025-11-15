@@ -141,12 +141,12 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64"
           # Use modern manylinux
           CIBW_MANYLINUX_X86_64: "manylinux_2_28"
-          # Force newer musllinux image with GCC supporting -std=c++20
-          CIBW_MUSLLINUX_X86_64: "musllinux_1_2"
-          # Provide execinfo on musllinux and link it
+          # Install libexecinfo for musllinux (needed for execinfo.h/backtrace)
           CIBW_BEFORE_BUILD_MUSLLINUX: "apk update && apk add --no-cache libexecinfo-dev"
           CIBW_ENVIRONMENT_LINUX: "CC=gcc CXX=g++"
-          CIBW_ENVIRONMENT_MUSLLINUX: "CC=gcc CXX=g++ LDFLAGS='-lexecinfo'"
+          # For musllinux: use -std=c++2a (GCC 9/10) instead of -std=c++20 (GCC 11+)
+          # This works because c++2a is equivalent to C++20 for older GCC versions
+          CIBW_ENVIRONMENT_MUSLLINUX: "CC=gcc CXX=g++ CXXFLAGS='-std=c++2a' LDFLAGS='-lexecinfo'"
           # Skip PyPy
           CIBW_SKIP: "pp*"
           CIBW_TEST_REQUIRES: "pytest"
