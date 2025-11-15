@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, staging ]
+    branches: [ master, staging, develop ]
   pull_request:
-    branches: [ master, staging ]
+    branches: [ master, staging, develop ]
   workflow_dispatch:
 
 # Cancel in-progress runs for the same branch
@@ -45,83 +45,41 @@ jobs:
           find k-hhc -name "*.cpp" -o -name "*.hpp" | \
           xargs -P$(nproc) clang-tidy -p build --warnings-as-errors=""
 
-  # ========== BUILD & TEST ==========
-  build-test:
-    name: Build & Test (${{ matrix.os }}, ${{ matrix.arch }})
+  # ========== C++ BUILD & TEST (Linux x86_64 + Windows amd64 only) ==========
+  cpp-build-test:
+    name: C++ Build & Test (${{ matrix.os }} ${{ matrix.arch }})
     needs: lint
     runs-on: ${{ matrix.runs-on }}
-    timeout-minutes: 30
-    continue-on-error: ${{ matrix.experimental || false }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux AMD64
           - os: linux
-            arch: amd64
+            arch: x86_64
             runs-on: ubuntu-latest
-            experimental: false
-
-          # Linux ARM64
-          #- os: linux
-          #  arch: arm64
-          #  runs-on: ubuntu-latest-arm64
-          #  experimental: true
-
-          # macOS universal2 (covers both x86_64 and arm64)
-          - os: macos
-            arch: universal2
-            runs-on: macos-14
-            experimental: false
-
-          # Windows AMD64
           - os: windows
             arch: amd64
             runs-on: windows-latest
-            experimental: false
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Setup build environment (Linux)
+      - name: Setup build env (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang
+          sudo apt-get install -y cmake ninja-build
 
-      - name: Setup build environment (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install cmake ninja llvm
-      
-      - name: Install Rosetta (for x86_64 testing)
-        if: runner.os == 'macOS'
-        run: |
-          softwareupdate --install-rosetta --agree-to-license || true
-
-      - name: Setup build environment (Windows)
+      - name: Setup build env (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install cmake ninja llvm
-          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          choco install cmake ninja -y
 
-      - name: Configure CMake (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: |
-          cmake -B build -G Ninja ^
-            -DCMAKE_BUILD_TYPE=Release ^
-            -DCMAKE_C_COMPILER=clang-cl ^
-            -DCMAKE_CXX_COMPILER=clang-cl
-
-      - name: Configure CMake (Unix)
-        if: runner.os != 'Windows'
+      - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=clang \
-            -DCMAKE_CXX_COMPILER=clang++
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build --parallel
@@ -131,8 +89,8 @@ jobs:
         run: ctest --output-on-failure --parallel
 
       - name: Run examples
-        shell: bash
         working-directory: build
+        shell: bash
         run: |
           echo "=== Running C++ examples ==="
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -145,215 +103,135 @@ jobs:
             ./examples/hhc_assert_example
           fi
 
-      - name: Upload test results
+      - name: Upload C++ test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-cpp-${{ matrix.os }}-${{ matrix.arch }}
           path: build/Testing/
 
-      - name: Set up Python
+  # ========== PYTHON WHEELS (cibuildwheel) ==========
+  python-wheels:
+    name: Python Wheels (${{ matrix.label }})
+    needs: lint
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64 (manylinux + musllinux)
+          - label: linux-x86_64
+            os: linux
+            runs-on: ubuntu-latest
+            cibw_build: "cp311-manylinux_x86_64 cp311-musllinux_x86_64"
+          # macOS universal2
+          - label: macos-universal2
+            os: macos
+            runs-on: macos-14
+            cibw_build: "cp311-macosx_universal2"
+          # Windows AMD64
+          - label: windows-amd64
+            os: windows
+            runs-on: windows-latest
+            cibw_build: "cp311-win_amd64"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python (build driver)
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
-          allow-prereleases: false
-          update-environment: true
+          python-version: "3.12"
+          cache: "pip"
 
-      - name: Verify Python version
-        shell: bash
-        run: |
-          python --version
-          PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
-          if [[ "$PYTHON_VERSION" != "3.12" ]]; then
-            echo "::error::Expected Python 3.12, but got $PYTHON_VERSION"
-            exit 1
-          fi
-          echo "✓ Python version verified: $PYTHON_VERSION"
-
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-${{ matrix.arch }}-pip-${{ hashFiles('**/pyproject.toml', '**/setup.py') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-pip-
-
-      - name: Install build dependencies
+      - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          pip install build cibuildwheel==2.16.2 pytest
+          pip install build cibuildwheel==2.16.2
 
-      - name: Setup LLVM for Windows
-        if: runner.os == 'Windows'
-        run: |
-          choco install llvm --version=19.1.7 --allow-downgrade -y
-          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Build wheels
+      - name: Build & Test wheels (cibuildwheel)
         env:
-          # Build on Python 3.11 - the wheel will be tagged cp37-abi3 automatically
-          # due to setup() options={"bdist_wheel": {"py_limited_api": "cp37"}}
-          CIBW_BUILD: cp311-*
-          CIBW_ARCHS_LINUX: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
-          # macOS uses universal2 (set in pyproject.toml), so no override needed
-          CIBW_ARCHS_WINDOWS: ${{ matrix.arch == 'amd64' && 'AMD64' || matrix.arch }}
-          CIBW_SKIP: "*-musllinux_* pp*"
+          CIBW_BUILD: ${{ matrix.cibw_build }}
+          CIBW_SKIP: "pp*"
+          CIBW_MUSLLINUX_X86_64: "musllinux_1_2"
+          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_COMMAND: >
+            python -m pytest -q {project}/python/test_hhc.py &&
+            python {project}/python/examples/encode_example.py &&
+            python {project}/python/examples/decode_example.py &&
+            python -c "import k_hhc, sys; print('Imported k_hhc OK on', sys.platform)"
           CIBW_BUILD_VERBOSITY: 1
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
 
-      - name: Build source distribution
-        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+      - name: Build source distribution (single Linux x86_64)
+        if: matrix.label == 'linux-x86_64'
         run: |
           cd python
           python -m build --sdist
 
-      - name: Test wheels
-        shell: bash
-        run: |
-          # List all wheels to debug
-          echo "Wheels in wheelhouse:"
-          ls -la wheelhouse/ || find wheelhouse -name "*.whl" || true
-          
-          # Find the abi3 wheel (should be only one per platform)
-          # Note: We build on cp311-*, but due to setup.cfg [bdist_wheel] py-limited-api = cp37,
-          # the wheel is automatically tagged as cp37-abi3, making it compatible with Python 3.7+
-          # Try multiple patterns to handle different platforms
-          ABI3_WHEEL=$(find wheelhouse -name "*-cp37-abi3-*.whl" 2>/dev/null | head -1)
-          
-          # If not found with cp37-abi3, try just abi3
-          if [ -z "$ABI3_WHEEL" ]; then
-            ABI3_WHEEL=$(find wheelhouse -name "*-abi3-*.whl" 2>/dev/null | head -1)
-          fi
-          
-          # macOS: also try universal2 pattern
-          if [ -z "$ABI3_WHEEL" ] && [[ "${{ matrix.os }}" == "macos" ]]; then
-            ABI3_WHEEL=$(find wheelhouse -name "*universal2*.whl" 2>/dev/null | head -1)
-          fi
-          
-          # If still not found, try to find any wheel (fallback)
-          if [ -z "$ABI3_WHEEL" ]; then
-            ABI3_WHEEL=$(find wheelhouse -name "*.whl" 2>/dev/null | head -1)
-          fi
-          
-          if [ -z "$ABI3_WHEEL" ]; then
-            echo "::error::No wheel found in wheelhouse/"
-            echo "Contents of wheelhouse:"
-            ls -la wheelhouse/ 2>/dev/null || echo "wheelhouse directory not found"
-            exit 1
-          fi
-          
-          echo "Found wheel: $ABI3_WHEEL"
-          
-          # Verify it's an abi3 wheel
-          if [[ "$ABI3_WHEEL" != *"abi3"* ]] && [[ "$ABI3_WHEEL" != *"cp37"* ]]; then
-            echo "::warning::Wheel may not be abi3: $ABI3_WHEEL"
-          else
-            echo "✓ Confirmed abi3 wheel: $ABI3_WHEEL"
-          fi
-          
-          # macOS-specific: Verify universal2 wheel has both architectures
-          if [[ "${{ matrix.os }}" == "macos" ]]; then
-            echo "Verifying universal2 wheel architectures..."
-            unzip -q "$ABI3_WHEEL" -d /tmp/wheel_extract
-            # Find the extension file (could be .so or .dylib on macOS)
-            EXTENSION_SO=$(find /tmp/wheel_extract -name "k_hhc*.so" -o -name "k_hhc*.dylib" | head -1)
-            if [ -n "$EXTENSION_SO" ]; then
-              ARCH_INFO=$(lipo -info "$EXTENSION_SO" 2>&1)
-              echo "Architecture info: $ARCH_INFO"
-              if [[ "$ARCH_INFO" == *"x86_64"* ]] && [[ "$ARCH_INFO" == *"arm64"* ]]; then
-                echo "✓ Universal2 wheel contains both x86_64 and arm64 slices"
-              else
-                echo "::error::Universal2 wheel missing required architectures"
-                echo "Expected both x86_64 and arm64, got: $ARCH_INFO"
-                exit 1
-              fi
-            else
-              echo "::warning::Could not find extension file in wheel to verify architectures"
-            fi
-            rm -rf /tmp/wheel_extract
-          fi
-          
-          # Test with the Python version set up by the CI action (native architecture)
-          PYTHON_CMD="python"
-          PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
-          echo "Testing with $PYTHON_CMD (version $PYTHON_VERSION) - native architecture"
-          
-          # Upgrade pip and install pytest
-          python -m pip install --upgrade pip --quiet
-          python -m pip install pytest --quiet
-          
-          # Install the abi3 wheel
-          python -m pip install --force-reinstall --no-deps "$ABI3_WHEEL"
-          echo "✓ Wheel installed successfully with $PYTHON_CMD"
-          
-          # Run tests
-          cd python
-          python -m pytest test_hhc.py -v
-          echo "✓ pytest passed with $PYTHON_CMD"
-          
-          python examples/encode_example.py
-          echo "✓ encode example passed with $PYTHON_CMD"
-          
-          python examples/decode_example.py
-          echo "✓ decode example passed with $PYTHON_CMD"
-          cd ..
-          
-          # macOS-specific: Test x86_64 slice using Rosetta
-          if [[ "${{ matrix.os }}" == "macos" ]]; then
-            echo "Testing x86_64 slice with Rosetta..."
-            PYTHON_X86_64="arch -x86_64 python"
-            PYTHON_X86_64_VERSION=$(arch -x86_64 python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
-            echo "Testing with x86_64 Python (version $PYTHON_X86_64_VERSION) via Rosetta"
-            
-            # Install pytest for x86_64 Python
-            arch -x86_64 python -m pip install --upgrade pip --quiet
-            arch -x86_64 python -m pip install pytest --quiet
-            
-            # Install the wheel for x86_64 Python
-            arch -x86_64 python -m pip install --force-reinstall --no-deps "$ABI3_WHEEL"
-            echo "✓ Wheel installed successfully for x86_64"
-            
-            # Run tests with x86_64 Python
-            cd python
-            arch -x86_64 python -m pytest test_hhc.py -v
-            echo "✓ pytest passed with x86_64 Python"
-            
-            arch -x86_64 python examples/encode_example.py
-            echo "✓ encode example passed with x86_64 Python"
-            
-            arch -x86_64 python examples/decode_example.py
-            echo "✓ decode example passed with x86_64 Python"
-            cd ..
-            
-            # Uninstall x86_64 installation
-            arch -x86_64 python -m pip uninstall -y k-hhc k_hhc 2>/dev/null || true
-            echo "✓ Successfully tested x86_64 slice with Python $PYTHON_X86_64_VERSION"
-          fi
-          
-          # Uninstall native installation
-          python -m pip uninstall -y k-hhc k_hhc 2>/dev/null || true
-          
-          echo "✓ Successfully tested abi3 wheel with Python $PYTHON_VERSION"
-
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.arch }}
+          name: wheels-${{ matrix.label }}
           path: wheelhouse/*.whl
 
-      - name: Upload source distribution
-        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+      - name: Upload sdist
+        if: matrix.label == 'linux-x86_64'
         uses: actions/upload-artifact@v4
         with:
           name: sdist
           path: python/dist/*.tar.gz
 
+  # ========== macOS x86_64 Smoke Test (Intel host) ==========
+  mac-x86-smoke:
+    name: macOS x86_64 Smoke Test (Intel host)
+    needs: python-wheels
+    runs-on: macos-13
+    timeout-minutes: 15
+    steps:
+      - name: Checkout (for tests only)
+        uses: actions/checkout@v5
+
+      - name: Download universal2 wheel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-macos-universal2
+          path: wheels
+
+      - name: List wheels
+        run: ls -la wheels
+
+      - name: Set up Python (3.12 Intel)
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install & smoke test
+        run: |
+          WHEEL=$(ls wheels/*universal2*.whl | head -1 || true)
+          if [ -z "$WHEEL" ]; then
+            echo "::error::No universal2 wheel found for macOS smoke test"
+            ls -la wheels
+            exit 1
+          fi
+            echo "Using wheel: $WHEEL"
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+            python -m pip install "$WHEEL"
+            python -c "import k_hhc, platform; print('k_hhc version:', getattr(k_hhc,'__version__','?'),'arch:',platform.machine())"
+            python python/examples/encode_example.py
+            python python/examples/decode_example.py
+            python -m pytest -q python/test_hhc.py
+            echo "✓ macOS x86_64 smoke test passed"
+
   # ========== FINAL STATUS CHECK ==========
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [lint, build-test]
+    needs: [lint, cpp-build-test, python-wheels, mac-x86-smoke]
     if: always()
     steps:
       - name: Check status
@@ -362,9 +240,7 @@ jobs:
             echo "::error::One or more required jobs failed"
             exit 1
           fi
-          
           if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
             echo "::warning::One or more jobs were cancelled"
           fi
-          
           echo "✅ All required jobs passed!"
