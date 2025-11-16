@@ -20,6 +20,7 @@ using hhc::bench::next_u64;
 using hhc::bench::random_alphabet_char;
 using hhc::bench::PERMUTATION_BLOCKSIZE;
 using hhc::HHC_64BIT_STRING_LENGTH;
+using hhc::HHC_64BIT_ENCODED_LENGTH;
 using hhc::hhc_64bit_decode_unsafe;
 using hhc::hhc_64bit_decode;
 using hhc::hhc_64bit_encode_padded;
@@ -39,11 +40,12 @@ void BM_hhc64BitDecodeUnsafe(benchmark::State& state) {
 
     array<string, pool_size> inputs{};
     for (auto& entry : inputs) {
-        entry.resize(HHC_64BIT_STRING_LENGTH);
-        for (std::size_t i = 0; i < HHC_64BIT_STRING_LENGTH; ++i) {
+        const int len = state.range(0);
+        entry.resize(len);
+        for (int i = 0; i < len; ++i) {
             entry[i] = random_alphabet_char(permuted32);
         }
-        entry[HHC_64BIT_STRING_LENGTH] = '\0';
+        entry[len-1] = '\0';
     }
 
     std::size_t idx = 0;
@@ -52,7 +54,7 @@ void BM_hhc64BitDecodeUnsafe(benchmark::State& state) {
         DoNotOptimize(hhc::hhc_64bit_decode_unsafe(current.data()));
     }
 }
-BENCHMARK(BM_hhc64BitDecodeUnsafe);
+BENCHMARK(BM_hhc64BitDecodeUnsafe)->Range(HHC_64BIT_ENCODED_LENGTH, HHC_64BIT_ENCODED_LENGTH);
 
 /**
  * @brief Benchmark the safe 64-bit decoder with padded inputs.
@@ -66,9 +68,10 @@ void BM_hhc64BitDecodeSafePadded(benchmark::State& state) {
 
     array<string, values.size()> inputs{};
     for (std::size_t i = 0; i < values.size(); ++i) {
-        inputs[i].resize(HHC_64BIT_STRING_LENGTH);
+        const int len = state.range(0);
+        inputs[i].resize(len);
         hhc_64bit_encode_padded(values[i], inputs[i].data());
-        inputs[i][HHC_64BIT_STRING_LENGTH] = '\0';
+        inputs[i][len-1] = '\0';
     }
 
     std::size_t idx = 0;
@@ -78,7 +81,7 @@ void BM_hhc64BitDecodeSafePadded(benchmark::State& state) {
         DoNotOptimize(hhc::hhc_64bit_decode(current.data()));
     }
 }
-BENCHMARK(BM_hhc64BitDecodeSafePadded);
+BENCHMARK(BM_hhc64BitDecodeSafePadded)->DenseRange(2, HHC_64BIT_ENCODED_LENGTH+1);
 
 /**
  * @brief Benchmark the safe 64-bit decoder with unpadded inputs.
@@ -91,7 +94,8 @@ void BM_hhc64BitDecodeSafeUnpadded(benchmark::State& state) {
     }
     array<string, values.size()> inputs{};
     for (std::size_t i = 0; i < values.size(); ++i) {
-        inputs[i] = string(HHC_64BIT_STRING_LENGTH, 0);
+        const int len = state.range(0);
+        inputs[i] = string(len, 0);
         hhc_64bit_encode_unpadded(values[i], inputs[i].data());
     }
 
@@ -102,7 +106,7 @@ void BM_hhc64BitDecodeSafeUnpadded(benchmark::State& state) {
         DoNotOptimize(hhc_64bit_decode(current.data()));
     }
 }
-BENCHMARK(BM_hhc64BitDecodeSafeUnpadded);
+BENCHMARK(BM_hhc64BitDecodeSafeUnpadded)->DenseRange(2, HHC_64BIT_ENCODED_LENGTH+1);
 
 }  // namespace
 
