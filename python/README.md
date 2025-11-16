@@ -19,7 +19,7 @@ pip install -e .
 
 - Python 3.7+
 - pybind11
-- C++20 compatible compiler (clang++ recommended)
+- C++17 compatible compiler (clang++ recommended)
 
 ## Usage
 

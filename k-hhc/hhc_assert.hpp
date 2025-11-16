@@ -201,7 +201,7 @@ inline void flush_coverage_profile() {}
  */
 #define HHC_ASSERT(expr) \
     do { \
-        if (!(expr)) [[unlikely]] { \
+        if (!(expr)) { \
             ::hhc::detail::assertion_failed( \
                 #expr, \
                 __FILE__, \
@@ -224,7 +224,7 @@ inline void flush_coverage_profile() {}
  */
 #define HHC_ASSERT_MSG(expr, msg) \
     do { \
-        if (!(expr)) [[unlikely]] { \
+        if (!(expr)) { \
             ::hhc::detail::assertion_failed( \
                 #expr " (" msg ")", \
                 __FILE__, \
