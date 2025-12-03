@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, staging, develop ]
+    branches: [ develop ]
   pull_request:
-    branches: [ master, staging, develop ]
+    branches: [ develop ]
   workflow_dispatch:
 
 concurrency:
@@ -144,9 +144,7 @@ jobs:
           # Install libexecinfo for musllinux (needed for execinfo.h/backtrace)
           CIBW_BEFORE_BUILD_MUSLLINUX: "apk update && apk add --no-cache libexecinfo-dev"
           CIBW_ENVIRONMENT_LINUX: "CC=gcc CXX=g++"
-          # For musllinux: use -std=c++2a (GCC 9/10) instead of -std=c++20 (GCC 11+)
-          # This works because c++2a is equivalent to C++20 for older GCC versions
-          CIBW_ENVIRONMENT_MUSLLINUX: "CC=gcc CXX=g++ CXXFLAGS='-std=c++2a' LDFLAGS='-lexecinfo'"
+          CIBW_ENVIRONMENT_MUSLLINUX: "CC=gcc CXX=g++ CXXFLAGS='-std=c++17' LDFLAGS='-lexecinfo'"
           # Skip PyPy
           CIBW_SKIP: "pp*"
           CIBW_TEST_REQUIRES: "pytest"

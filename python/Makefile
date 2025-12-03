@@ -37,7 +37,7 @@ ifeq ($(CC_FAMILY),msvc)
 
   OBJEXT = .obj
   OBJECTS = $(SOURCES:.cpp=$(OBJEXT))
-  CXXFLAGS ?= /std:c++20 /O2 /EHsc /MD
+  CXXFLAGS ?= /std:c++17 /O2 /EHsc /MD
   LDFLAGS ?= /LD
   PY_LIBDIR := $(shell $(PYTHON) -c "import sysconfig;print(sysconfig.get_config_var('LIBDIR') or '')")
   PY_LIB := $(shell $(PYTHON) -c "import sysconfig;print(sysconfig.get_config_var('LIBRARY') or '')")
@@ -55,7 +55,7 @@ else
 
   OBJEXT = .o
   OBJECTS = $(SOURCES:.cpp=$(OBJEXT))
-  CXXFLAGS ?= -std=c++20 -O3 -fPIC
+  CXXFLAGS ?= -std=c++17 -O3 -fPIC
   ifeq ($(UNAME_S),Darwin)
     LDFLAGS ?= -bundle -undefined dynamic_lookup
   else

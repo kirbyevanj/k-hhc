@@ -7,7 +7,7 @@ if(NOT CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++)
 endif()
 
-project(k-hhc VERSION 1.0.8 LANGUAGES CXX)
+project(k-hhc VERSION 1.0.9 LANGUAGES CXX)
 
 option(HHC_ENABLE_COVERAGE "Enable LLVM coverage instrumentation" OFF)
 
@@ -20,8 +20,8 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # Generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Set C++20 standard
-set(CMAKE_CXX_STANDARD 20)
+# Set C++17 standard
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

@@ -339,15 +339,15 @@ static PyMethodDef k_hhc_methods[] = {
  * @return The module definition PyModuleDef.
  */
 static struct PyModuleDef k_hhc_module = {
-    .m_base     = PyModuleDef_HEAD_INIT,
-    .m_name     = "k_hhc",
-    .m_doc      = k_hhc_module_doc,
-    .m_size     = -1,
-    .m_methods  = k_hhc_methods,
-    .m_slots    = nullptr,
-    .m_traverse = nullptr,
-    .m_clear    = nullptr,
-    .m_free     = nullptr
+    PyModuleDef_HEAD_INIT,
+    "k_hhc",
+    k_hhc_module_doc,
+    -1,
+    k_hhc_methods,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr
 };
 
 /**

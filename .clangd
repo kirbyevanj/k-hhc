@@ -1,7 +1,7 @@
 CompileFlags:
   Add:
-    # C++20 standard
-    - "-std=c++20"
+    # C++17 standard
+    - "-std=c++17"
     # Python includes (for python/ directory)
     # Try common locations - clangd will use the first one that exists
     - "-I/usr/include/python3.13"

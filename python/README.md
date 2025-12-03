@@ -6,23 +6,6 @@ Inspired by [hexahexacontadecimal](https://pypi.org/project/hexahexacontadecimal
 
 ## Installation
 
-### Method 1: Using CMake (recommended for development)
-
-```bash
-# Clone the repository
-git clone https://github.com/kirbyevanj/k-hhc.git
-cd k-hhc
-
-# From the root directory
-mkdir build && cd build
-cmake .. -DHHC_BUILD_PYTHON=ON
-make
-
-# The Python module will be in build/python/
-```
-
-### Method 2: Using setuptools
-
 ```bash
 # From the python directory
 cd python
@@ -34,9 +17,9 @@ pip install -e .
 
 ## Requirements
 
-- Python 3.6+
+- Python 3.7+
 - pybind11
-- C++23 compatible compiler (clang++ recommended)
+- C++17 compatible compiler (clang++ recommended)
 
 ## Usage
 
