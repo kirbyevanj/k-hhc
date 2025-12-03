@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "k-hhc"
 version = "1.0.9"
-edescription = "Python bindings for Hexahexacontadecimal (base66) encoding"
+description = "Python bindings for Hexahexacontadecimal (base66) encoding"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {text = "Apache-2.0"}
