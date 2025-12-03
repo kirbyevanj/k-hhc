@@ -96,7 +96,7 @@ jobs:
           fi
       - name: Upload C++ test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results-cpp-${{ matrix.os }}-${{ matrix.arch }}
           path: build/Testing/
@@ -164,13 +164,13 @@ jobs:
           cd python
           python -m build --sdist
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ matrix.label }}
           path: wheelhouse/*.whl
       - name: Upload sdist
         if: matrix.label == 'linux-x86_64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sdist
           path: python/dist/*.tar.gz
