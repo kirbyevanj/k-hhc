@@ -96,7 +96,7 @@ ctest --output-on-failure
 
 ### Prerequisites
 
-- CMake 3.20 or higher
+- CMake 3.15 or higher
 - C++17 compatible compiler (GCC 7+, Clang 5+, or MSVC 19.14+ / VS 2017 15.7+)
 - Python 3.6+ and pybind11 (optional, for Python bindings)
 

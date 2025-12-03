@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.15)
 
 # Example executables
 add_executable(hhc_encode_example encode_example.cpp)
