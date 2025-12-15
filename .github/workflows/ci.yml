@@ -182,7 +182,7 @@ jobs:
       - name: Checkout (for tests only)
         uses: actions/checkout@v6
       - name: Download universal2 wheel artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: wheels-macos-universal2
           path: wheels
