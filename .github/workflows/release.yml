@@ -192,7 +192,7 @@ jobs:
             echo "See \`checksums.txt\` in the assets for SHA256 checksums."
           } > changelog.md
       - name: Download all artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
       - name: Organize release assets
@@ -222,13 +222,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Python wheels
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
       - name: Download source distribution
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: sdist
           path: dist
@@ -249,13 +249,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Python wheels
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
       - name: Download source distribution
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: sdist
           path: dist
