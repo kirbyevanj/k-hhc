@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
+# Compiler configuration
 if(NOT CMAKE_C_COMPILER)
     set(CMAKE_C_COMPILER clang)
 endif()
@@ -9,22 +10,23 @@ endif()
 
 project(k-hhc VERSION 1.0.9 LANGUAGES CXX)
 
+# Build options
 option(HHC_ENABLE_COVERAGE "Enable LLVM coverage instrumentation" OFF)
+option(HHC_ENABLE_FUZZING "Enable libFuzzer targets" OFF)
+option(HHC_BUILD_PYTHON "Build Python bindings" OFF)
 
-# Set default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Generate compile_commands.json for clangd
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# Set C++17 standard
+# C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Coverage configuration
 if(HHC_ENABLE_COVERAGE)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR "Coverage support requires the Clang toolchain")
@@ -37,9 +39,6 @@ endif()
 
 include(GNUInstallDirs)
 
-option(HHC_ENABLE_FUZZING "Enable libFuzzer targets" OFF)
-option(HHC_BUILD_PYTHON "Build Python bindings" OFF)
-
 # Header-only library
 add_library(k-hhc INTERFACE)
 target_include_directories(k-hhc INTERFACE
@@ -47,6 +46,7 @@ target_include_directories(k-hhc INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
+# Installation
 install(TARGETS k-hhc EXPORT k-hhcTargets)
 install(DIRECTORY k-hhc/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} FILES_MATCHING PATTERN "*.hpp")
 
@@ -54,21 +54,20 @@ set(PC_FILE "${CMAKE_CURRENT_BINARY_DIR}/k-hhc.pc")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/k-hhc.pc.in ${PC_FILE} @ONLY)
 install(FILES ${PC_FILE} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
-# Enable testing
+# Subdirectories
 enable_testing()
-
-# Add subdirectories
 add_subdirectory(tests)
 add_subdirectory(benchmarks)
 add_subdirectory(examples)
 if(HHC_ENABLE_FUZZING)
     add_subdirectory(fuzz)
 endif()
-# Python bindings are built using Makefile in python/ directory
+
 if(HHC_BUILD_PYTHON)
     message(WARNING "HHC_BUILD_PYTHON is deprecated. Use 'cd python && make' or 'python -m build' instead.")
 endif()
 
+# Coverage target
 if(HHC_ENABLE_COVERAGE)
     find_program(LLVM_PROFDATA llvm-profdata REQUIRED)
     find_program(LLVM_COV llvm-cov REQUIRED)

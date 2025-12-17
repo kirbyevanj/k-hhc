@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.15)
+
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(WARNING "Fuzzing targets skipped: libFuzzer requires Clang")
     return()
@@ -14,4 +16,3 @@ foreach(_fuzzer IN ITEMS hhc_fuzz_decode32 hhc_fuzz_decode64)
 endforeach()
 
 unset(_hhc_fuzz_flags)
-

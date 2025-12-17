@@ -3,10 +3,10 @@ project(k-hhc-benchmarks VERSION 1.0.0 LANGUAGES CXX)
 
 include(ExternalProject)
 
-# Find threading library
+# Dependencies
 find_package(Threads REQUIRED)
 
-# Set platform-specific library extensions
+# Platform-specific library extensions
 if(WIN32)
     set(LIB_PREFIX "")
     set(LIB_SUFFIX ".lib")
@@ -15,7 +15,7 @@ else()
     set(LIB_SUFFIX ".a")
 endif()
 
-# Download and configure Google Benchmark
+# Google Benchmark external project
 ExternalProject_Add(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
@@ -36,7 +36,7 @@ ExternalProject_Add(
         ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/lib/${LIB_PREFIX}benchmark_main${LIB_SUFFIX}
 )
 
-# Create imported target for benchmark
+# Benchmark imported targets
 add_library(benchmark_lib STATIC IMPORTED)
 set_target_properties(benchmark_lib PROPERTIES
     IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/lib/${LIB_PREFIX}benchmark${LIB_SUFFIX}
@@ -57,16 +57,15 @@ set(HHC_BENCH_SOURCES
     extras_bench.cpp
     main.cpp
 )
-add_executable(hhc_benchmarks ${HHC_BENCH_SOURCES})
 
-# Platform-specific link libraries for benchmark
+add_executable(hhc_benchmarks ${HHC_BENCH_SOURCES})
+target_include_directories(hhc_benchmarks PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/include
+)
+add_dependencies(hhc_benchmarks benchmark)
+
 if(WIN32)
     target_link_libraries(hhc_benchmarks PRIVATE k-hhc benchmark_lib benchmark_main Threads::Threads Shlwapi)
 else()
     target_link_libraries(hhc_benchmarks PRIVATE k-hhc benchmark_lib benchmark_main Threads::Threads)
 endif()
-
-target_include_directories(hhc_benchmarks PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/include
-)
-add_dependencies(hhc_benchmarks benchmark)

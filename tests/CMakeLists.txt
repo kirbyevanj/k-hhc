@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
+project(k-hhc-tests VERSION 1.0.0 LANGUAGES CXX)
 
 include(ExternalProject)
 
-# Find threading library
+# Dependencies
 find_package(Threads REQUIRED)
 
-# Set platform-specific library extensions
+# Platform-specific library extensions
 if(WIN32)
     set(LIB_PREFIX "")
     set(LIB_SUFFIX ".lib")
@@ -14,7 +15,7 @@ else()
     set(LIB_SUFFIX ".a")
 endif()
 
-# Download and configure GoogleTest
+# GoogleTest external project
 ExternalProject_Add(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
@@ -34,7 +35,7 @@ ExternalProject_Add(
         ${CMAKE_CURRENT_BINARY_DIR}/googletest-install/lib/${LIB_PREFIX}gtest_main${LIB_SUFFIX}
 )
 
-# Create imported target for gtest
+# GoogleTest imported targets
 add_library(gtest STATIC IMPORTED)
 set_target_properties(gtest PROPERTIES
     IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/googletest-install/lib/${LIB_PREFIX}gtest${LIB_SUFFIX}
@@ -57,6 +58,7 @@ set(HHC_TEST_SOURCES
     constants_tests.cpp
     assert_tests.cpp
 )
+
 add_executable(hhc_tests ${HHC_TEST_SOURCES})
 target_link_libraries(hhc_tests PRIVATE k-hhc gtest gtest_main Threads::Threads)
 target_include_directories(hhc_tests PRIVATE
@@ -64,5 +66,4 @@ target_include_directories(hhc_tests PRIVATE
 )
 add_dependencies(hhc_tests googletest)
 
-# Add test to CTest
 add_test(NAME hhc_tests COMMAND hhc_tests)
