@@ -50,7 +50,7 @@ py-modules = []
 [tool.cibuildwheel]
 # Build on ONE CPython per platform; abi3 wheel will be tagged cp37-abi3 by bdist_wheel
 build = ["cp311-*"]
-skip = ["*-musllinux_*", "pp*"]
+skip = ["pp*"]
 build-verbosity = 1
 
 [tool.cibuildwheel.linux]
@@ -58,6 +58,8 @@ archs = ["x86_64", "aarch64"]
 # Use newer manylinux for modern toolchains and C++20 support
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
+musllinux-x86_64-image = "musllinux_1_2"
+musllinux-aarch64-image = "musllinux_1_2"
 # Note: before-all and environment are set in CI workflow to allow
 # platform-specific overrides (e.g., musllinux uses apk, not dnf)
 
