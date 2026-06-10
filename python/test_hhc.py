@@ -130,10 +130,46 @@ class TestHHCPython(unittest.TestCase):
                 unpadded = k_hhc.encode_unpadded_64bit(value)
                 self.assertEqual(k_hhc.decode_64bit(unpadded), value)
 
+    def test_decode_padded_zero(self):
+        """Padded all-padding strings decode to zero."""
+        self.assertEqual(k_hhc.decode_32bit("------"), 0)
+        self.assertEqual(k_hhc.decode_64bit("-----------"), 0)
+
+    def test_decode_too_long_valid_alphabet_raises_value_error(self):
+        """Strings longer than max encoded length raise ValueError."""
+        with self.assertRaises(ValueError):
+            k_hhc.decode_32bit("-------")  # 7 valid alphabet chars
+        with self.assertRaises(ValueError):
+            k_hhc.decode_64bit("------------")  # 12 valid alphabet chars
+
+    def test_encode_non_int_raises_type_error(self):
+        """Encode functions require int arguments."""
+        for bad in ("42", 3.14, None, b"\x01"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(TypeError):
+                    k_hhc.encode_padded_32bit(bad)
+                with self.assertRaises(TypeError):
+                    k_hhc.encode_unpadded_32bit(bad)
+                with self.assertRaises(TypeError):
+                    k_hhc.encode_padded_64bit(bad)
+                with self.assertRaises(TypeError):
+                    k_hhc.encode_unpadded_64bit(bad)
+
+    def test_decode_embedded_null_raises_value_error(self):
+        """Embedded NUL characters in encoded strings are rejected."""
+        with self.assertRaises(ValueError):
+            k_hhc.decode_32bit("1\x001")
+        with self.assertRaises(ValueError):
+            k_hhc.decode_64bit("1\x001")
+
     def test_constants(self):
         """Test module constants."""
         self.assertEqual(k_hhc.HHC_32BIT_ENCODED_LENGTH, 6)
         self.assertEqual(k_hhc.HHC_64BIT_ENCODED_LENGTH, 11)
+        self.assertEqual(k_hhc.HHC_32BIT_STRING_LENGTH, 8)
+        self.assertEqual(k_hhc.HHC_64BIT_STRING_LENGTH, 16)
+        self.assertEqual(k_hhc.HHC_32BIT_ENCODED_MAX_STRING, "1QLCp1")
+        self.assertEqual(k_hhc.HHC_64BIT_ENCODED_MAX_STRING, "9lH9ebONzYD")
         self.assertEqual(len(k_hhc.ALPHABET), 66)
         self.assertTrue(k_hhc.ALPHABET.startswith("-.0123456789"))
 

@@ -25,8 +25,8 @@ CompileFlags:
     - "-Wall"
     - "-Wextra"
   Remove:
-    # Remove MSVC-specific flags if present
-    - "-W*"
+    # Remove MSVC-specific flags if present (slash form, e.g. /W4)
+    - "/W*"
 
 Diagnostics:
   UnusedIncludes: Strict

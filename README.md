@@ -26,36 +26,31 @@ Procedural approaches are currently being explored, but are not yet implemented.
 
 ### Dirty Benchmark
 
-(Ryzen 9 5950X) at v1.0.8, clang 20.1.8:
+(Ryzen 9 5950X) at v1.0.9, clang 20.1.8. `SafePadded` decodes full-length strings;
+`SafeUnpadded/N` decodes valid strings of length N (exercising the internal re-padding path):
 ```
 Running ./benchmarks/hhc_benchmarks
-Run on (32 X 5086.18 MHz CPU s)
-CPU Caches:
-  L1 Data 32 KiB (x16)
-  L1 Instruction 32 KiB (x16)
-  L2 Unified 512 KiB (x16)
-  L3 Unified 32768 KiB (x2)
-Load Average: 2.13, 1.53, 1.38
-***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
-------------------------------------------------------------------------
-Benchmark                              Time             CPU   Iterations
-------------------------------------------------------------------------
-BM_hhc32BitEncodePadded             3.64 ns         3.63 ns    191195224
-BM_hhc32BitEncodeUnpadded           10.7 ns         10.7 ns     65552301
-BM_hhc64BitEncodePadded             7.55 ns         7.52 ns     93689754
-BM_hhc64BitEncodeUnpadded           13.8 ns         13.8 ns     51108440
-BM_hhc32BitDecodeUnsafe             2.26 ns         2.25 ns    298530751
-BM_hhc32BitDecodeSafe               5.03 ns         5.01 ns    100000000
-BM_hhc64BitDecodeUnsafe             4.86 ns         4.85 ns    179958209
-BM_hhc64BitDecodeSafePadded         8.32 ns         8.29 ns     83133464
-BM_hhc64BitDecodeSafeUnpadded       9.25 ns         9.22 ns     75757135
-BM_hhcValidateString32              2.82 ns         2.81 ns    260687294
-BM_hhcValidateString64              6.96 ns         6.94 ns    101104402
-HM_rand32Bit                        4.77 ns         4.76 ns    146694025
-BM_Permuted32Next                  0.701 ns        0.699 ns    997647405
+---------------------------------------------------------------------------
+Benchmark                                 Time             CPU   Iterations
+---------------------------------------------------------------------------
+BM_hhc32BitEncodePadded                3.66 ns         3.64 ns    192808111
+BM_hhc32BitEncodeUnpadded              7.29 ns         7.25 ns     96727892
+BM_hhc64BitEncodePadded                7.38 ns         7.34 ns     95334676
+BM_hhc64BitEncodeUnpadded              11.2 ns         11.1 ns     62800279
+BM_hhc32BitDecodeUnsafe                1.97 ns         1.95 ns    357813255
+BM_hhc32BitDecodeSafePadded            5.18 ns         5.15 ns    137772050
+BM_hhc32BitDecodeSafeUnpadded/2        7.48 ns         7.44 ns     94386643
+BM_hhc32BitDecodeSafeUnpadded/6        5.21 ns         5.18 ns    135880173
+BM_hhc64BitDecodeUnsafe                3.61 ns         3.59 ns    196041287
+BM_hhc64BitDecodeSafePadded            7.94 ns         7.90 ns     89124368
+BM_hhc64BitDecodeSafeUnpadded/2        7.74 ns         7.69 ns     91107737
+BM_hhc64BitDecodeSafeUnpadded/10       11.0 ns         11.0 ns     63744347
+BM_hhc64BitDecodeSafeUnpadded/11       7.88 ns         7.85 ns     89452653
+BM_hhcValidateString32                 2.96 ns         2.95 ns    236655903
+BM_hhcValidateString64                 6.03 ns         6.01 ns    116794736
+HM_rand32Bit                           4.34 ns         4.31 ns    165584729
+BM_Permuted32Next                     0.693 ns        0.690 ns   1014214212
 ```
-
-As you can see, the performance is not quite there yet, additionally segmentation between the different performance cases needs to be done, such as unalligned access and aligned access, or differing length of strings.
 
 ## Quick Start
 
@@ -84,12 +79,10 @@ cmake --build .
 # Run the tests
 ctest --output-on-failure
 
-# Run the benchmarks
-./benchmarks/hhc_benchmarks
-
 # Run the examples
 ./examples/hhc_encode_example
 ./examples/hhc_decode_example
+./examples/hhc_assert_example
 ```
 
 ## Building the Project
@@ -98,7 +91,7 @@ ctest --output-on-failure
 
 - CMake 3.15 or higher
 - C++17 compatible compiler (GCC 7+, Clang 5+, or MSVC 19.14+ / VS 2017 15.7+)
-- Python 3.6+ and pybind11 (optional, for Python bindings)
+- Python 3.7+ and pybind11 (optional, build-time only, for Python bindings)
 
 ### Build Instructions
 
@@ -122,24 +115,18 @@ cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 cmake --build .
 ```
 
-#### Build with Python Bindings
+#### Build the Python Bindings
+
+The Python extension is built with setuptools, not CMake:
 
 ```bash
-# Clone the repository
-...
-# Build with Python bindings
-cmake -DHHC_BUILD_PYTHON=ON ..
-cmake --build .
-...
+cd python
 
-# Goto python directory
-cd ../python
-
-# Build the Python package
+# Build and install the Python package
 pip install .
 
 # Test the module
-PYTHONPATH=./python python3 -c "import k_hhc; print(k_hhc.encode_padded_32bit(629717763))"
+python3 -c "import k_hhc; print(k_hhc.encode_padded_32bit(629717763))"
 ```
 
 #### Build with Code Coverage
@@ -197,17 +184,34 @@ violations rather than continuing in a broken state).
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `HHC_BUILD_TESTS` | `ON` | Build unit tests (downloads GoogleTest). |
+| `HHC_BUILD_EXAMPLES` | `ON` | Build the example programs. |
+| `HHC_BUILD_BENCHMARKS` | `OFF` | Build benchmarks (downloads Google Benchmark). |
 | `HHC_ENABLE_COVERAGE` | `OFF` | Enable LLVM code coverage instrumentation. Requires Clang compiler. Adds a `coverage` target that generates HTML reports. |
-| `HHC_BUILD_PYTHON` | `OFF` | Build Python bindings using pybind11. Requires Python 3.6+ and pybind11. |
 | `HHC_ENABLE_FUZZING` | `OFF` | Build libFuzzer targets for fuzzing. Requires Clang compiler with fuzzing support. |
 | `CMAKE_BUILD_TYPE` | `Release` | Build type: `Debug`, `Release`, `RelWithDebInfo`, or `MinSizeRel`. |
 | `CMAKE_C_COMPILER` | (system default) | C compiler to use (e.g., `clang`, `gcc`). |
 | `CMAKE_CXX_COMPILER` | (system default) | C++ compiler to use (e.g., `clang++`, `g++`). |
 
+### Installing and consuming with CMake
+
+```bash
+cmake --install build --prefix /your/prefix
+```
+
+```cmake
+find_package(k-hhc 1.0 REQUIRED)
+target_link_libraries(your_target PRIVATE k-hhc::k-hhc)
+```
+
+A pkg-config file (`k-hhc.pc`) is also installed.
+
 ## Running Benchmarks
 
 ```bash
-# From the build directory
+# Configure with benchmarks enabled, then run from the build directory
+cmake -DHHC_BUILD_BENCHMARKS=ON ..
+cmake --build .
 ./benchmarks/hhc_benchmarks
 ```
 
@@ -217,21 +221,20 @@ violations rather than continuing in a broken state).
 ## External Dependencies
 
 - [GoogleTest](https://github.com/google/googletest) - v1.14.0 (automatically downloaded)
-- [Google Benchmark](https://github.com/google/benchmark) - v1.8.3 (automatically downloaded)
+- [Google Benchmark](https://github.com/google/benchmark) - v1.9.1 (automatically downloaded)
 
 Dependencies are managed via CMake's ExternalProject_Add and will be automatically downloaded and built.
 
 ## Python Bindings
 
-### Building from Source with CMake
+### Building from Source
 
 ```bash
-mkdir build && cd build
-cmake -DHHC_BUILD_PYTHON=ON ..
-cmake --build .
+cd python
+pip install .
 
 # Test the module
-PYTHONPATH=./python python3 -c "import k_hhc; print(k_hhc.encode_padded_32bit(42))"
+python3 -c "import k_hhc; print(k_hhc.encode_padded_32bit(42))"
 ```
 
 ### Python API

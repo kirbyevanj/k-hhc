@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    message(WARNING "Fuzzing targets skipped: libFuzzer requires Clang")
-    return()
+    message(FATAL_ERROR "HHC_ENABLE_FUZZING requires Clang (libFuzzer); current compiler is ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
 set(_hhc_fuzz_flags -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g)

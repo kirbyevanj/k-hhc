@@ -1,21 +1,50 @@
 #include <gtest/gtest.h>
 
+#include "hhc.hpp"
 #include "hhc_constants.hpp"
 
-#include <cstddef>
 #include <array>
+#include <cstddef>
+#include <limits>
 
-using hhc::make_hhc_inverse_alphabet;
 using hhc::ALPHABET;
-using hhc::INVERSE_ALPHABET;
+using hhc::BASE;
+using hhc::HHC_32BIT_ENCODED_LENGTH;
+using hhc::HHC_32BIT_ENCODED_MAX_STRING;
+using hhc::HHC_32BIT_STRING_LENGTH;
+using hhc::HHC_64BIT_ENCODED_LENGTH;
+using hhc::HHC_64BIT_ENCODED_MAX_STRING;
+using hhc::HHC_64BIT_STRING_LENGTH;
 using hhc::HHC_INVALID_CHAR;
+using hhc::INVERSE_ALPHABET;
+using hhc::make_hhc_inverse_alphabet;
 
-
+static_assert(BASE == 66);
+static_assert(HHC_32BIT_ENCODED_LENGTH == 6);
+static_assert(HHC_64BIT_ENCODED_LENGTH == 11);
+static_assert(HHC_32BIT_STRING_LENGTH == 8);
+static_assert(HHC_64BIT_STRING_LENGTH == 16);
+static_assert(hhc::hhc_32bit_decode(HHC_32BIT_ENCODED_MAX_STRING) ==
+              std::numeric_limits<uint32_t>::max());
+static_assert(hhc::hhc_64bit_decode(HHC_64BIT_ENCODED_MAX_STRING) ==
+              std::numeric_limits<uint64_t>::max());
 
 /**
  * @file constants_tests.cpp
  * @brief Unit tests covering the compile-time alphabet helpers.
  */
+
+TEST(HhcConstantsTest, DocumentedLengthConstants) {
+    EXPECT_EQ(BASE, 66u);
+    EXPECT_EQ(HHC_32BIT_ENCODED_LENGTH, 6u);
+    EXPECT_EQ(HHC_64BIT_ENCODED_LENGTH, 11u);
+    EXPECT_EQ(HHC_32BIT_STRING_LENGTH, 8u);
+    EXPECT_EQ(HHC_64BIT_STRING_LENGTH, 16u);
+    EXPECT_EQ(hhc::hhc_32bit_decode(HHC_32BIT_ENCODED_MAX_STRING),
+              std::numeric_limits<uint32_t>::max());
+    EXPECT_EQ(hhc::hhc_64bit_decode(HHC_64BIT_ENCODED_MAX_STRING),
+              std::numeric_limits<uint64_t>::max());
+}
 
 TEST(HhcConstantsTest, MakeInverseAlphabetMatchesAlphabet) {
     const auto inverse = make_hhc_inverse_alphabet();

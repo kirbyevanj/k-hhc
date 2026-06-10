@@ -7,6 +7,7 @@
 #include <Python.h>
 
 #include <cstdint>
+#include <cstdio>
 #include <stdexcept>
 #include <cstring>
 #include <limits>
@@ -55,6 +56,24 @@ static void set_overflow_for_bits(const char* func, const char* bits) {
     char msg[256];
     snprintf(msg, sizeof(msg), "%s: value out of range for %s unsigned integer", func, bits);
     PyErr_SetString(PyExc_OverflowError, msg);
+}
+
+/**
+ * Extract UTF-8 bytes from a PyBytes object and reject embedded NUL characters.
+ * @param bytes The bytes object (UTF-8 encoding of the input str).
+ * @param s Output pointer to the byte buffer.
+ * @param size Output length of the byte buffer.
+ * @return 0 on success, -1 on error (sets Python exception).
+ */
+static int get_utf8_bytes_no_embedded_null(PyObject* bytes, char** s, Py_ssize_t* size) {
+    if (PyBytes_AsStringAndSize(bytes, s, size) < 0) {
+        return -1;
+    }
+    if (memchr(*s, '\0', (size_t)*size) != nullptr) {
+        PyErr_SetString(PyExc_ValueError, "embedded null character in HHC string");
+        return -1;
+    }
+    return 0;
 }
 
 /**
@@ -147,7 +166,8 @@ static PyObject* k_hhc_decode_32bit(PyObject*, PyObject* arg) {
     PyObjHolder bytes_holder(bytes);
 
     char* s = nullptr;
-    if (PyBytes_AsStringAndSize(bytes_holder.get(), &s, nullptr) < 0) {
+    Py_ssize_t size = 0;
+    if (get_utf8_bytes_no_embedded_null(bytes_holder.get(), &s, &size) < 0) {
         return nullptr;
     }
 
@@ -224,7 +244,8 @@ static PyObject* k_hhc_decode_64bit(PyObject* /*self*/, PyObject* arg) {
     PyObjHolder bytes_holder(bytes);
 
     char* s = nullptr;
-    if (PyBytes_AsStringAndSize(bytes_holder.get(), &s, nullptr) < 0) {
+    Py_ssize_t size = 0;
+    if (get_utf8_bytes_no_embedded_null(bytes_holder.get(), &s, &size) < 0) {
         return nullptr;
     }
 

@@ -77,3 +77,15 @@ TEST(HhcEncode64Test, Encode64BitUnpaddedMaxRemainsUnchanged) {
     EXPECT_EQ(unpadded, "9lH9ebONzYD");
 }
 
+TEST(HhcEncode64Test, Encode64BitPaddedWritesExactlyElevenBytesNoNullTerminator) {
+    string output(HHC_64BIT_STRING_LENGTH, static_cast<char>(0x7F));
+    hhc_64bit_encode_padded(9876543210ULL, output.data());
+
+    string expected(HHC_64BIT_STRING_LENGTH, '\0');
+    hhc_64bit_encode_padded(9876543210ULL, expected.data());
+    for (std::size_t i = 0; i < HHC_64BIT_ENCODED_LENGTH; ++i) {
+        EXPECT_EQ(output[i], expected[i]);
+    }
+    EXPECT_EQ(static_cast<unsigned char>(output[HHC_64BIT_ENCODED_LENGTH]), 0x7Fu);
+}
+

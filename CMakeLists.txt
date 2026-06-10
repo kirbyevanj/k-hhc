@@ -1,16 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 
-# Compiler configuration
-if(NOT CMAKE_C_COMPILER)
-    set(CMAKE_C_COMPILER clang)
-endif()
-if(NOT CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER clang++)
-endif()
-
 project(k-hhc VERSION 1.0.9 LANGUAGES CXX)
 
 # Build options
+option(HHC_BUILD_TESTS "Build unit tests" ON)
+option(HHC_BUILD_EXAMPLES "Build example programs" ON)
+option(HHC_BUILD_BENCHMARKS "Build benchmarks (downloads Google Benchmark)" OFF)
 option(HHC_ENABLE_COVERAGE "Enable LLVM coverage instrumentation" OFF)
 option(HHC_ENABLE_FUZZING "Enable libFuzzer targets" OFF)
 option(HHC_BUILD_PYTHON "Build Python bindings" OFF)
@@ -45,6 +40,7 @@ target_include_directories(k-hhc INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/k-hhc>
     $<INSTALL_INTERFACE:include>
 )
+target_compile_features(k-hhc INTERFACE cxx_std_17)
 
 # Warnings for project targets that link k-hhc (not third-party deps).
 # BUILD_INTERFACE keeps the flags out of the exported/installed target so
@@ -56,18 +52,48 @@ else()
 endif()
 
 # Installation
+include(CMakePackageConfigHelpers)
+
 install(TARGETS k-hhc EXPORT k-hhcTargets)
 install(DIRECTORY k-hhc/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} FILES_MATCHING PATTERN "*.hpp")
+
+install(EXPORT k-hhcTargets
+    FILE k-hhcTargets.cmake
+    NAMESPACE k-hhc::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/k-hhc
+)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/k-hhcConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/k-hhcConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/k-hhc
+)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/k-hhcConfigVersion.cmake
+    COMPATIBILITY SameMajorVersion
+    ARCH_INDEPENDENT
+)
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/k-hhcConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/k-hhcConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/k-hhc
+)
 
 set(PC_FILE "${CMAKE_CURRENT_BINARY_DIR}/k-hhc.pc")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/k-hhc.pc.in ${PC_FILE} @ONLY)
 install(FILES ${PC_FILE} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 # Subdirectories
-enable_testing()
-add_subdirectory(tests)
-add_subdirectory(benchmarks)
-add_subdirectory(examples)
+if(HHC_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+if(HHC_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
+if(HHC_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 if(HHC_ENABLE_FUZZING)
     add_subdirectory(fuzz)
 endif()
@@ -78,6 +104,9 @@ endif()
 
 # Coverage target
 if(HHC_ENABLE_COVERAGE)
+    if(NOT HHC_BUILD_TESTS)
+        message(FATAL_ERROR "HHC_ENABLE_COVERAGE requires HHC_BUILD_TESTS=ON")
+    endif()
     find_program(LLVM_PROFDATA llvm-profdata REQUIRED)
     find_program(LLVM_COV llvm-cov REQUIRED)
 

@@ -10,8 +10,6 @@ helpers (compiler flags, include paths). All metadata is in pyproject.toml.
 from setuptools import setup
 from pybind11.setup_helpers import Pybind11Extension, build_ext  # build helper only
 import os
-import subprocess
-import re
 
 # Resolve include directory for the bundled headers (sdist vs. repo layout)
 this_dir = os.path.dirname(os.path.abspath(__file__))

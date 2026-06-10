@@ -16,7 +16,6 @@
 constexpr auto U64_MAX_VALUE = std::numeric_limits<uint64_t>::max();
 constexpr auto U64_MIN_VALUE = std::numeric_limits<uint64_t>::min();
 
-using hhc::hhc_bounds_check;
 using hhc::hhc_64bit_decode;
 using hhc::hhc_64bit_decode_unsafe;
 using hhc::hhc_64bit_encode_padded;
@@ -126,9 +125,16 @@ TEST(HhcDecode64Test, RoundTrip64BitTestFirst1Million) {
     }
 }
 
-TEST(HhcDecode64Test, RoundTrip64BitSafeDecodeUnpaddedFirst100K) {
-    // Exercise the full public path: unpadded encode -> validated decode
-    for (uint64_t i = 0; i < 100000; i++) {
+TEST(HhcDecode64Test, RoundTrip64BitSafeDecodePaddedFirst1Million) {
+    for (uint64_t i = 0; i < 1000000; i++) {
+        string output(HHC_64BIT_STRING_LENGTH, 0);
+        hhc_64bit_encode_padded(i, output.data());
+        ASSERT_EQ(hhc_64bit_decode(output.c_str()), i);
+    }
+}
+
+TEST(HhcDecode64Test, RoundTrip64BitSafeDecodeUnpaddedFirst1Million) {
+    for (uint64_t i = 0; i < 1000000; i++) {
         string output(HHC_64BIT_STRING_LENGTH, 0);
         hhc::hhc_64bit_encode_unpadded(i, output.data());
         ASSERT_EQ(hhc_64bit_decode(output.c_str()), i);
@@ -177,10 +183,9 @@ TEST(HhcDecode64Test, SecurityUnpaddedShorterOutOfRangeRejected) {
 }
 
 TEST(HhcDecode64Test, SecurityUnpaddedJustBelowMaxAccepted) {
-    // Just below max should work
     EXPECT_NO_THROW({
         auto result = hhc_64bit_decode("9lH9ebONzYC");
-        EXPECT_LT(result, U64_MAX_VALUE);
+        EXPECT_EQ(result, U64_MAX_VALUE - 1);
     });
 }
 

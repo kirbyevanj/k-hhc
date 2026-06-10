@@ -45,12 +45,12 @@ struct Permuted32 {
 };
 
 /**
- * @brief Fill an std::array with permuted values generated from the provided sequence.
+ * @brief Fill a container with permuted values generated from the provided sequence.
  */
-template <typename T, std::size_t N, typename Generator>
-void fill_with_permuted_values(std::array<T, N>& out, Generator& generator) {
+template <typename Container, typename Generator>
+void fill_with_permuted_values(Container& out, Generator& generator) {
     for (auto& value : out) {
-        value = static_cast<T>(generator.next());
+        value = static_cast<typename Container::value_type>(generator.next());
     }
 }
 

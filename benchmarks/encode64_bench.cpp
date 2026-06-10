@@ -4,6 +4,7 @@
 #include "hhc.hpp"
 
 #include <array>
+#include <vector>
 
 /**
  * @file encode64_bench.cpp
@@ -27,7 +28,7 @@ using benchmark::DoNotOptimize;
  */
 void BM_hhc64BitEncodePadded(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    array<uint64_t, 2U << 16> inputs{};
+    std::vector<uint64_t> inputs(2U << 16);
     for (auto& input : inputs) {
         input = next_u64(permuted32);
     }
@@ -48,7 +49,7 @@ BENCHMARK(BM_hhc64BitEncodePadded);
  */
 void BM_hhc64BitEncodeUnpadded(benchmark::State& state) {
     Permuted32 permuted32(rand());
-    array<uint64_t, 2U << 16> inputs{};
+    std::vector<uint64_t> inputs(2U << 16);
     for (auto& input : inputs) {
         input = next_u64(permuted32);
     }

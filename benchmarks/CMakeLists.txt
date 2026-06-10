@@ -16,21 +16,29 @@ else()
 endif()
 
 # Google Benchmark external project
+# Only forward compilers that are actually set: the top-level project is
+# CXX-only, so CMAKE_C_COMPILER may be empty and an explicit empty value
+# would break the inner project's compiler detection.
+set(_benchmark_cmake_args
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/benchmark-install
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DCMAKE_CXX_STANDARD=17
+    -DBENCHMARK_ENABLE_TESTING=OFF
+    -DBENCHMARK_ENABLE_GTEST_TESTS=OFF
+    -DBENCHMARK_USE_BUNDLED_GTEST=OFF
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL
+)
+if(CMAKE_C_COMPILER)
+    list(APPEND _benchmark_cmake_args -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER})
+endif()
+
 ExternalProject_Add(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
     GIT_TAG v1.9.1
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/benchmark
-    CMAKE_ARGS
-        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/benchmark-install
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_CXX_STANDARD=17
-        -DBENCHMARK_ENABLE_TESTING=OFF
-        -DBENCHMARK_ENABLE_GTEST_TESTS=OFF
-        -DBENCHMARK_USE_BUNDLED_GTEST=OFF
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL
+    CMAKE_ARGS ${_benchmark_cmake_args}
     BUILD_BYPRODUCTS
         ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/lib/${LIB_PREFIX}benchmark${LIB_SUFFIX}
         ${CMAKE_CURRENT_BINARY_DIR}/benchmark-install/lib/${LIB_PREFIX}benchmark_main${LIB_SUFFIX}

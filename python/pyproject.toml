@@ -55,7 +55,7 @@ build-verbosity = 1
 
 [tool.cibuildwheel.linux]
 archs = ["x86_64", "aarch64"]
-# Use newer manylinux for modern toolchains and C++20 support
+# Use newer manylinux for modern toolchains and C++17 support
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 musllinux-x86_64-image = "musllinux_1_2"

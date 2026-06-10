@@ -39,8 +39,7 @@ TEST(HhcUnpadStringTest, StopsAtFirstNonPaddingCharacter) {
 
     hhc_unpad_string(buffer.data());
 
-    EXPECT_EQ(buffer[0], '.');
-    EXPECT_EQ(buffer[1], 'A');
+    EXPECT_STREQ(buffer.data(), ".ABCDEF");
 }
 
 TEST(HhcUnpadStringTest, RemovesAllLeadingPaddingBeforeSignificantCharacter) {

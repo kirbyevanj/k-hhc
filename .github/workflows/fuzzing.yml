@@ -2,9 +2,9 @@ name: Fuzzing
 
 on:
   push:
-    branches: [ master, staging ]
+    branches: [ master, staging, develop ]
   pull_request:
-    branches: [ master, staging ]
+    branches: [ master, staging, develop ]
   schedule:
     # Run fuzzing daily at 2 AM UTC
     - cron: '0 2 * * *'

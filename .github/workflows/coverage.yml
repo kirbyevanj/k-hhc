@@ -42,6 +42,7 @@ jobs:
           cmake -B build-release -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DHHC_ENABLE_COVERAGE=ON \
+            -DHHC_BUILD_BENCHMARKS=ON \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++
 
@@ -69,6 +70,7 @@ jobs:
           cmake -B build-debug -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DHHC_ENABLE_COVERAGE=ON \
+            -DHHC_BUILD_BENCHMARKS=ON \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++
 

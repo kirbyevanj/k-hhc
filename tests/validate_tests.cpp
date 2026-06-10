@@ -17,9 +17,11 @@ using hhc::HHC_64BIT_ENCODED_MAX_STRING;
 
 using std::string;
 
+static_assert(hhc_validate_string("abc") == 3);
+
 TEST(HhcValidateTest, ValidateStringAcceptsAlphabetCharacters) {
     const string input = "A0.-~_";
-    EXPECT_TRUE(hhc_validate_string(input.c_str()));
+    EXPECT_EQ(hhc_validate_string(input.c_str()), 6u);
 }
 
 TEST(HhcValidateTest, ValidateStringRejectsNonAlphabetCharactersFirstCharacter) {
@@ -38,15 +40,15 @@ TEST(HhcValidateTest, ValidateStringRejectsNonAlphabetAllCharacters) {
 }
 
 TEST(HhcValidateTest, ValidateStringRejectsEmptyString) {
-    EXPECT_FALSE(hhc_validate_string(""));
+    EXPECT_EQ(hhc_validate_string(""), 0u);
 }
 
 TEST(HhcValidateTest, ValidateStringAccepts32BitMaxString) {
-    EXPECT_TRUE(hhc_validate_string(HHC_32BIT_ENCODED_MAX_STRING));
+    EXPECT_EQ(hhc_validate_string(HHC_32BIT_ENCODED_MAX_STRING), 6u);
 }
 
 TEST(HhcValidateTest, ValidateStringAccepts64BitMaxString) {
-    EXPECT_TRUE(hhc_validate_string(HHC_64BIT_ENCODED_MAX_STRING));
+    EXPECT_EQ(hhc_validate_string(HHC_64BIT_ENCODED_MAX_STRING), 11u);
 }
 
 // ========== BOUNDARY CONDITION TESTS ==========

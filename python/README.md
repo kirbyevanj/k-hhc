@@ -18,7 +18,7 @@ pip install -e .
 ## Requirements
 
 - Python 3.7+
-- C++20 compatible compiler (clang++ recommended)
+- C++17 compatible compiler (clang++ recommended)
 - pybind11 (build-time only; pulled in automatically by pip/setuptools)
 
 ## Release build behavior
@@ -82,7 +82,11 @@ except OverflowError as e:
 
 - `HHC_32BIT_ENCODED_LENGTH`: Length of padded 32-bit encoded strings (6)
 - `HHC_64BIT_ENCODED_LENGTH`: Length of padded 64-bit encoded strings (11)
-- `ALPHABET`: The HHC alphabet string
+- `HHC_32BIT_STRING_LENGTH`: Buffer size for 32-bit encode output (8)
+- `HHC_64BIT_STRING_LENGTH`: Buffer size for 64-bit encode output (16)
+- `HHC_32BIT_ENCODED_MAX_STRING`: Maximum valid padded 32-bit encoded string (`"1QLCp1"`)
+- `HHC_64BIT_ENCODED_MAX_STRING`: Maximum valid padded 64-bit encoded string (`"9lH9ebONzYD"`)
+- `ALPHABET`: The HHC alphabet string (66 characters)
 
 ### Exceptions
 

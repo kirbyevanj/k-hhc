@@ -10,6 +10,7 @@ global-exclude *.py[co]
 global-exclude *.pyc
 global-exclude *.pyo
 global-exclude test_*.py
+include test_hhc.py
 global-exclude verify_*.py
 global-exclude *_test.py
 global-exclude *_tests.py

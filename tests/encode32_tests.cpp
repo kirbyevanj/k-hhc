@@ -78,3 +78,15 @@ TEST(HhcEncode32Test, Encode32BitUnpaddedMaxRemainsUnchanged) {
     EXPECT_EQ(unpadded, "1QLCp1");
 }
 
+TEST(HhcEncode32Test, Encode32BitPaddedWritesExactlySixBytesNoNullTerminator) {
+    string output(HHC_32BIT_STRING_LENGTH, static_cast<char>(0x7F));
+    hhc_32bit_encode_padded(424242U, output.data());
+
+    string expected(HHC_32BIT_STRING_LENGTH, '\0');
+    hhc_32bit_encode_padded(424242U, expected.data());
+    for (std::size_t i = 0; i < HHC_32BIT_ENCODED_LENGTH; ++i) {
+        EXPECT_EQ(output[i], expected[i]);
+    }
+    EXPECT_EQ(static_cast<unsigned char>(output[HHC_32BIT_ENCODED_LENGTH]), 0x7Fu);
+}
+

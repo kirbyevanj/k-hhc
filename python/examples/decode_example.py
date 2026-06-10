@@ -5,7 +5,7 @@ Example demonstrating k-hhc decoding functionality in Python.
 
 import k_hhc
 
-def decode_with_error_handling(decode_func, encoded, bit_size):
+def decode_with_error_handling(decode_func, encoded):
     """Helper function to decode with error handling."""
     try:
         decoded = decode_func(encoded)
@@ -38,7 +38,7 @@ def main():
     ]
     
     for encoded in encoded_32:
-        result = decode_with_error_handling(k_hhc.decode_32bit, encoded, 32)
+        result = decode_with_error_handling(k_hhc.decode_32bit, encoded)
         print(f"  '{encoded:10}' -> {result}")
     
     print()
@@ -59,7 +59,7 @@ def main():
     ]
     
     for encoded in encoded_64:
-        result = decode_with_error_handling(k_hhc.decode_64bit, encoded, 64)
+        result = decode_with_error_handling(k_hhc.decode_64bit, encoded)
         print(f"  '{encoded:15}' -> {result}")
     
     print()

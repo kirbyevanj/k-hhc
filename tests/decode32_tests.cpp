@@ -18,7 +18,6 @@ constexpr auto U32_MIN_VALUE = std::numeric_limits<uint32_t>::min();
 using hhc::hhc_32bit_decode;
 using hhc::hhc_32bit_decode_unsafe;
 using hhc::hhc_32bit_encode_padded;
-using hhc::hhc_validate_string;
 using hhc::HHC_32BIT_ENCODED_LENGTH;
 using hhc::HHC_32BIT_STRING_LENGTH;
 using hhc::HHC_32BIT_ENCODED_MAX_STRING;
@@ -126,9 +125,16 @@ TEST(HhcDecode32Test, RoundTrip32BitTestFirst1Million) {
     }
 }
 
-TEST(HhcDecode32Test, RoundTrip32BitSafeDecodeUnpaddedFirst100K) {
-    // Exercise the full public path: unpadded encode -> validated decode
-    for (uint32_t i = 0; i < 100000; i++) {
+TEST(HhcDecode32Test, RoundTrip32BitSafeDecodePaddedFirst1Million) {
+    for (uint32_t i = 0; i < 1000000; i++) {
+        string output(HHC_32BIT_STRING_LENGTH, 0);
+        hhc_32bit_encode_padded(i, output.data());
+        ASSERT_EQ(hhc_32bit_decode(output.c_str()), i);
+    }
+}
+
+TEST(HhcDecode32Test, RoundTrip32BitSafeDecodeUnpaddedFirst1Million) {
+    for (uint32_t i = 0; i < 1000000; i++) {
         string output(HHC_32BIT_STRING_LENGTH, 0);
         hhc::hhc_32bit_encode_unpadded(i, output.data());
         ASSERT_EQ(hhc_32bit_decode(output.c_str()), i);
@@ -175,10 +181,9 @@ TEST(HhcDecode32Test, SecurityUnpaddedShorterOutOfRangeRejected) {
 }
 
 TEST(HhcDecode32Test, SecurityUnpaddedJustBelowMaxAccepted) {
-    // Just below max should work
     EXPECT_NO_THROW({
         auto result = hhc_32bit_decode("1QLCp0");
-        EXPECT_LT(result, U32_MAX_VALUE);
+        EXPECT_EQ(result, U32_MAX_VALUE - 1);
     });
 }
 

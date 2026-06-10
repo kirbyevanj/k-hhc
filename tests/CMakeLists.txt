@@ -16,20 +16,28 @@ else()
 endif()
 
 # GoogleTest external project
+# Only forward compilers that are actually set: the top-level project is
+# CXX-only, so CMAKE_C_COMPILER may be empty and an explicit empty value
+# would break the inner project's compiler detection.
+set(_gtest_cmake_args
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/googletest-install
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DCMAKE_CXX_STANDARD=17
+    -DBUILD_GMOCK=OFF
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -Dgtest_force_shared_crt=ON
+    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL
+)
+if(CMAKE_C_COMPILER)
+    list(APPEND _gtest_cmake_args -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER})
+endif()
+
 ExternalProject_Add(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG v1.14.0
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/googletest
-    CMAKE_ARGS
-        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/googletest-install
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_CXX_STANDARD=17
-        -DBUILD_GMOCK=OFF
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -Dgtest_force_shared_crt=ON
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL
+    CMAKE_ARGS ${_gtest_cmake_args}
     BUILD_BYPRODUCTS
         ${CMAKE_CURRENT_BINARY_DIR}/googletest-install/lib/${LIB_PREFIX}gtest${LIB_SUFFIX}
         ${CMAKE_CURRENT_BINARY_DIR}/googletest-install/lib/${LIB_PREFIX}gtest_main${LIB_SUFFIX}

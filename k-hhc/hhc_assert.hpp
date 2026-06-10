@@ -1,14 +1,20 @@
 #ifndef HHC_ASSERT_HPP
 #define HHC_ASSERT_HPP
 
-#include <cstdlib>
-#include <iostream>
-
 #if defined(__clang__)
 #  define HHC_NO_PROFILE __attribute__((no_profile_instrument_function))
 #else
 #  define HHC_NO_PROFILE
 #endif
+
+// The stack-trace / diagnostic machinery (iostream, execinfo, windows.h,
+// dbghelp) is only compiled into debug builds. Release builds reduce
+// HHC_ASSERT to a bare trap, so consumers do not pay for heavyweight
+// includes, static iostream initialization, or platform header pollution.
+#ifndef NDEBUG
+
+#include <cstdlib>
+#include <iostream>
 
 // Platform-specific includes for stack traces
 // Check Windows first (clang-cl defines __clang__ but not __unix__)
@@ -51,19 +57,20 @@
     #define HHC_HAVE_STACKWALK 0
 #endif
 
+#endif // !NDEBUG
+
 namespace hhc::detail {
 
 #ifdef LLVM_BUILD_INSTRUMENTED
-HHC_NO_PROFILE
 extern "C" int __llvm_profile_write_file(void);
-inline void flush_coverage_profile() {
+HHC_NO_PROFILE inline void flush_coverage_profile() {
     (void)__llvm_profile_write_file();
 }
 #else
 inline void flush_coverage_profile() {}
 #endif
 
-
+#ifndef NDEBUG
     /**
      * @brief Print stack trace (debug builds only)
      */
@@ -73,30 +80,30 @@ inline void flush_coverage_profile() {}
         // Unix-like systems (Linux, macOS, BSD) with execinfo.h available
         constexpr int max_frames = 64;
         void* buffer[max_frames];
-        
+
         int frame_count = backtrace(buffer, max_frames);
-        
+
         std::cerr << "\n=== Stack Trace ===\n";
         backtrace_symbols_fd(buffer, frame_count, STDERR_FILENO);
         std::cerr << "===================\n\n";
-        
+
 #elif HHC_HAVE_STACKWALK
         // Windows stack walk
         constexpr int max_frames = 64;
         void* stack[max_frames];
-        
+
         HANDLE process = GetCurrentProcess();
         SymInitialize(process, NULL, TRUE);
-        
+
         WORD frame_count = CaptureStackBackTrace(0, max_frames, stack, NULL);
-        
+
         std::cerr << "\n=== Stack Trace ===\n";
-        
+
         SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
         if (symbol) {
             symbol->MaxNameLen = 255;
             symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-            
+
             for (int i = 0; i < frame_count; i++) {
                 if (SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol)) {
                     std::cerr << "  " << symbol->Name << " [0x" << std::hex << symbol->Address << std::dec << "]\n";
@@ -104,18 +111,19 @@ inline void flush_coverage_profile() {}
                     std::cerr << "  [0x" << std::hex << (DWORD64)stack[i] << std::dec << "]\n";
                 }
             }
-            
+
             free(symbol);
         }
-        
+
         std::cerr << "===================\n\n";
         SymCleanup(process);
-        
+
 #else
         // Fallback: no stack trace available (e.g., musl without libexecinfo)
         std::cerr << "\n[Stack trace not available on this platform]\n\n";
 #endif
     }
+#endif // !NDEBUG
 
     /**
      * @brief Handle assertion failure
@@ -259,4 +267,3 @@ inline void flush_coverage_profile() {}
     )
 
 #endif // HHC_ASSERT_HPP
-
