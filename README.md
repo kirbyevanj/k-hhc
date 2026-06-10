@@ -26,7 +26,7 @@ Procedural approaches are currently being explored, but are not yet implemented.
 
 ### Dirty Benchmark
 
-(Ryzen 9 5950X) at v1.0.9, clang 20.1.8. `SafePadded` decodes full-length strings;
+(Ryzen 9 5950X) at v1.1.0, clang 20.1.8. `SafePadded` decodes full-length strings;
 `SafeUnpadded/N` decodes valid strings of length N (exercising the internal re-padding path):
 ```
 Running ./benchmarks/hhc_benchmarks

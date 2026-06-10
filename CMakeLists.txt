@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(k-hhc VERSION 1.0.9 LANGUAGES CXX)
+project(k-hhc VERSION 1.1.0 LANGUAGES CXX)
 
 # Build options
 option(HHC_BUILD_TESTS "Build unit tests" ON)
