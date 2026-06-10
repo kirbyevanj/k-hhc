@@ -96,7 +96,7 @@ jobs:
           fi
       - name: Upload C++ test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-cpp-${{ matrix.os }}-${{ matrix.arch }}
           path: build/Testing/
@@ -130,7 +130,7 @@ jobs:
         run: ctest --output-on-failure --parallel
       - name: Upload sanitizer test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-sanitizers-linux
           path: build/Testing/
@@ -196,13 +196,13 @@ jobs:
           cd python
           python -m build --sdist
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.label }}
           path: wheelhouse/*.whl
       - name: Upload sdist
         if: matrix.label == 'linux-x86_64'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: python/dist/*.tar.gz
@@ -216,7 +216,7 @@ jobs:
       - name: Checkout (for tests only)
         uses: actions/checkout@v6
       - name: Download universal2 wheel artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: wheels-macos-universal2
           path: wheels

@@ -50,7 +50,7 @@ jobs:
           python-version: '3.11'
 
       - name: Cache pip packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.arch }}-pip-release-${{ hashFiles('**/pyproject.toml', '**/setup.py') }}
@@ -131,14 +131,14 @@ jobs:
           cmake --install build
 
       - name: Upload Python wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
 
       - name: Upload source distribution
         if: matrix.os == 'linux' && matrix.arch == 'amd64'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: python/dist/*.tar.gz
@@ -193,7 +193,7 @@ jobs:
             echo "See \`checksums.txt\` in the assets for SHA256 checksums."
           } > changelog.md
       - name: Download all artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Organize release assets
@@ -223,13 +223,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Python wheels
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
       - name: Download source distribution
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: sdist
           path: dist
@@ -250,13 +250,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Python wheels
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
       - name: Download source distribution
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: sdist
           path: dist
