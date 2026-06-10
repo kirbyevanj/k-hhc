@@ -6,14 +6,11 @@ include(ExternalProject)
 # Dependencies
 find_package(Threads REQUIRED)
 
-# Platform-specific library extensions
-if(WIN32)
-    set(LIB_PREFIX "")
-    set(LIB_SUFFIX ".lib")
-else()
-    set(LIB_PREFIX "lib")
-    set(LIB_SUFFIX ".a")
-endif()
+# Static library naming follows the toolchain, not the OS: MSVC produces
+# gtest.lib while MinGW on Windows produces libgtest.a. CMake's per-toolchain
+# variables match what the inner project (same forwarded compiler) emits.
+set(LIB_PREFIX "${CMAKE_STATIC_LIBRARY_PREFIX}")
+set(LIB_SUFFIX "${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
 # GoogleTest external project
 # Only forward compilers that are actually set: the top-level project is
