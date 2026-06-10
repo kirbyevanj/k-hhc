@@ -18,8 +18,14 @@ pip install -e .
 ## Requirements
 
 - Python 3.7+
-- pybind11
-- C++17 compatible compiler (clang++ recommended)
+- C++20 compatible compiler (clang++ recommended)
+- pybind11 (build-time only; pulled in automatically by pip/setuptools)
+
+## Release build behavior
+
+Release wheels are built with `NDEBUG` defined. Internal `HHC_ASSERT` failures do not
+print a message; they terminate the process via a trap instruction (`__builtin_trap`).
+This fail-fast behavior is intentional for release builds.
 
 ## Usage
 

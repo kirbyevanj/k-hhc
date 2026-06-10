@@ -22,7 +22,7 @@ constexpr char PAD = ALPHABET[0];
 
 
 
-TEST(HhcUnpadStringTest, ReplacesLeadingPaddingWithSpaces) {
+TEST(HhcUnpadStringTest, RemovesLeadingPadding) {
     array<char, HHC_32BIT_STRING_LENGTH> buffer{
         PAD, PAD, PAD, 'A', 'B', 'C', 'D', '\0'};
 
@@ -43,7 +43,7 @@ TEST(HhcUnpadStringTest, StopsAtFirstNonPaddingCharacter) {
     EXPECT_EQ(buffer[1], 'A');
 }
 
-TEST(HhcUnpadStringTest, ConvertsAllPaddingCharactersToSpaces) {
+TEST(HhcUnpadStringTest, RemovesAllLeadingPaddingBeforeSignificantCharacter) {
     array<char, HHC_32BIT_STRING_LENGTH> buffer{
         PAD, PAD, PAD, PAD, PAD, PAD, 'X', '\0'};
 
@@ -54,17 +54,17 @@ TEST(HhcUnpadStringTest, ConvertsAllPaddingCharactersToSpaces) {
     EXPECT_EQ(buffer[1], '\0');
 }
 
-TEST(HhcUnpadStringTest, HandlesAllPaddingWithNullTerminator) {
-    // This tests the exit condition: *output_string == '\0'
-    // The loop should exit when it hits the null terminator, not crash or overflow
+TEST(HhcUnpadStringTest, AllPaddingUnpadsToSinglePaddingCharacter) {
+    // An all-padding string encodes zero; its canonical unpadded form is a
+    // single padding character so the result still decodes back to zero
     array<char, HHC_32BIT_STRING_LENGTH> buffer{
         PAD, PAD, PAD, PAD, PAD, PAD, '\0', '\0'};
 
     hhc_unpad_string(buffer.data());
 
-    // When all characters are padding followed by null, result should be empty string
-    EXPECT_STREQ(buffer.data(), "");
-    EXPECT_EQ(buffer[0], '\0');
+    EXPECT_STREQ(buffer.data(), "-");
+    EXPECT_EQ(buffer[0], PAD);
+    EXPECT_EQ(buffer[1], '\0');
 }
 
 TEST(HhcUnpadStringTest, HandlesEmptyString) {
@@ -89,12 +89,14 @@ TEST(HhcUnpadStringTest, HandlesSingleNonPaddingCharacter) {
 }
 
 TEST(HhcUnpadStringTest, HandlesSinglePaddingCharacter) {
-    // Edge case: single padding character - tests null terminator exit condition
+    // Edge case: a single padding character is already the canonical zero
+    // encoding and must remain unchanged
     array<char, HHC_32BIT_STRING_LENGTH> buffer{PAD, '\0'};
 
     hhc_unpad_string(buffer.data());
 
-    EXPECT_STREQ(buffer.data(), "");
-    EXPECT_EQ(buffer[0], '\0');
+    EXPECT_STREQ(buffer.data(), "-");
+    EXPECT_EQ(buffer[0], PAD);
+    EXPECT_EQ(buffer[1], '\0');
 }
 

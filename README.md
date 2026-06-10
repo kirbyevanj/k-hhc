@@ -185,6 +185,14 @@ cmake --build .
 ./fuzz/hhc_fuzz_decode32 -max_total_time=60
 ```
 
+### Release build behavior (`HHC_ASSERT`)
+
+In **Debug** builds, failed internal assertions (`HHC_ASSERT` in `hhc_assert.hpp`) abort
+with a diagnostic message. In **Release** builds (`NDEBUG` defined), the same check
+compiles to `__builtin_trap()` and terminates the process immediately without a message.
+Release Python wheels follow this behavior by design (fail-fast on internal invariant
+violations rather than continuing in a broken state).
+
 ### CMake Configuration Options
 
 | Option | Default | Description |

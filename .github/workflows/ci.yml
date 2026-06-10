@@ -101,6 +101,40 @@ jobs:
           name: test-results-cpp-${{ matrix.os }}-${{ matrix.arch }}
           path: build/Testing/
 
+  sanitizers:
+    name: Sanitizers (Linux)
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup build env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang
+      - name: Configure CMake (ASan + UBSan)
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -g" \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Run tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel
+      - name: Upload sanitizer test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results-sanitizers-linux
+          path: build/Testing/
+
   python-wheels:
     name: Python Wheels (${{ matrix.label }})
     needs: lint
@@ -215,7 +249,7 @@ jobs:
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [lint, cpp-build-test, python-wheels, mac-x86-smoke]
+    needs: [lint, cpp-build-test, sanitizers, python-wheels, mac-x86-smoke]
     if: always()
     steps:
       - name: Check status

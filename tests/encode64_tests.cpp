@@ -34,13 +34,33 @@ TEST(HhcEncode64Test, Encode64BitTestUINT64_MAX) {
     EXPECT_EQ(output.substr(0, HHC_64BIT_ENCODED_LENGTH), "9lH9ebONzYD");
 }
 
-TEST(HhcEncode64Test, Encode64BitUnpaddedZeroProducesSpaces) {
+TEST(HhcEncode64Test, Encode64BitUnpaddedZeroProducesSinglePaddingChar) {
     string output(HHC_64BIT_STRING_LENGTH, '\0');
     hhc_64bit_encode_unpadded(U64_MIN_VALUE, output.data());
-    // After unpadding, all padding is removed and string is null-terminated
-    // For zero (all padding), the result should be an empty string
-    EXPECT_STREQ(output.data(), "");
+    // Zero's canonical unpadded encoding is a single padding character,
+    // which round-trips through the decoder (unlike an empty string)
+    EXPECT_STREQ(output.data(), "-");
 }
+
+TEST(HhcEncode64Test, Encode64BitUnpaddedZeroRoundTrips) {
+    string output(HHC_64BIT_STRING_LENGTH, '\0');
+    hhc_64bit_encode_unpadded(U64_MIN_VALUE, output.data());
+    EXPECT_EQ(hhc::hhc_64bit_decode(output.c_str()), U64_MIN_VALUE);
+}
+
+// Compile-time proof that the encode -> decode pipeline is genuinely constexpr
+// and that every digit count round-trips, including zero
+namespace {
+constexpr uint64_t constexpr_roundtrip64(uint64_t value) {
+    char buffer[HHC_64BIT_STRING_LENGTH] = {};
+    hhc_64bit_encode_unpadded(value, buffer);
+    return hhc::hhc_64bit_decode(buffer);
+}
+static_assert(constexpr_roundtrip64(0ULL) == 0ULL);
+static_assert(constexpr_roundtrip64(1ULL) == 1ULL);
+static_assert(constexpr_roundtrip64(9876543210ULL) == 9876543210ULL);
+static_assert(constexpr_roundtrip64(U64_MAX_VALUE) == U64_MAX_VALUE);
+}  // namespace
 
 TEST(HhcEncode64Test, Encode64BitUnpaddedPreservesSignificantDigits) {
     string output(HHC_64BIT_STRING_LENGTH, '\0');

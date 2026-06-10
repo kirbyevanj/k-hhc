@@ -5,7 +5,7 @@ if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     return()
 endif()
 
-set(_hhc_fuzz_flags -fsanitize=fuzzer,address -fno-omit-frame-pointer -g)
+set(_hhc_fuzz_flags -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g)
 
 foreach(_fuzzer IN ITEMS hhc_fuzz_decode32 hhc_fuzz_decode64)
     add_executable(${_fuzzer} ${_fuzzer}.cpp)

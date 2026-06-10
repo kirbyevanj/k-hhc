@@ -71,11 +71,8 @@ def main():
     test_values = [0, 1, 42, 100, 1000, 424242]
     
     for original in test_values:
-        # Test with unpadded encoding
         encoded = k_hhc.encode_unpadded_32bit(original)
-        # Handle empty string case for 0
-        decode_str = "-" if encoded == "" else encoded
-        decoded = k_hhc.decode_32bit(decode_str)
+        decoded = k_hhc.decode_32bit(encoded)
         status = "OK" if original == decoded else "FAIL"
         print(f"  {original:6} -> '{encoded:6}' -> {decoded:6} {status}")
     
@@ -91,8 +88,7 @@ def main():
     start = time.time()
     for i in range(1_000_000):
         encoded = k_hhc.encode_unpadded_32bit(i)
-        if encoded:  # Skip empty string for 0
-            decoded = k_hhc.decode_32bit(encoded)
+        decoded = k_hhc.decode_32bit(encoded)
     elapsed = time.time() - start
     print(f"  32-bit: 1M encode/decode pairs in {elapsed:.3f} seconds")
     print(f"          ({1_000_000/elapsed:,.0f} operations/second)")

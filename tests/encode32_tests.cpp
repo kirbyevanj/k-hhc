@@ -35,13 +35,33 @@ TEST(HhcEncode32Test, Encode32BitTestUINT32_MAX) {
     EXPECT_STREQ(output.c_str(), "1QLCp1");
 }
 
-TEST(HhcEncode32Test, Encode32BitUnpaddedZeroProducesSpaces) {
+TEST(HhcEncode32Test, Encode32BitUnpaddedZeroProducesSinglePaddingChar) {
     string output(HHC_32BIT_STRING_LENGTH, '\0');
     hhc_32bit_encode_unpadded(U32_MIN_VALUE, output.data());
-    // After unpadding, all padding is removed and string is null-terminated
-    // For zero (all padding), the result should be an empty string or single padding char
-    EXPECT_STREQ(output.data(), "");
+    // Zero's canonical unpadded encoding is a single padding character,
+    // which round-trips through the decoder (unlike an empty string)
+    EXPECT_STREQ(output.data(), "-");
 }
+
+TEST(HhcEncode32Test, Encode32BitUnpaddedZeroRoundTrips) {
+    string output(HHC_32BIT_STRING_LENGTH, '\0');
+    hhc_32bit_encode_unpadded(U32_MIN_VALUE, output.data());
+    EXPECT_EQ(hhc::hhc_32bit_decode(output.c_str()), U32_MIN_VALUE);
+}
+
+// Compile-time proof that the encode -> decode pipeline is genuinely constexpr
+// and that every digit count round-trips, including zero
+namespace {
+constexpr uint32_t constexpr_roundtrip32(uint32_t value) {
+    char buffer[HHC_32BIT_STRING_LENGTH] = {};
+    hhc_32bit_encode_unpadded(value, buffer);
+    return hhc::hhc_32bit_decode(buffer);
+}
+static_assert(constexpr_roundtrip32(0U) == 0U);
+static_assert(constexpr_roundtrip32(1U) == 1U);
+static_assert(constexpr_roundtrip32(424242U) == 424242U);
+static_assert(constexpr_roundtrip32(U32_MAX_VALUE) == U32_MAX_VALUE);
+}  // namespace
 
 TEST(HhcEncode32Test, Encode32BitUnpaddedPreservesSignificantDigits) {
     string output(HHC_32BIT_STRING_LENGTH, '\0');

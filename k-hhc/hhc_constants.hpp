@@ -16,13 +16,23 @@ namespace hhc {
         'v', 'w', 'x', 'y', 'z', '~'
     };
 
+    // Sentinel marking bytes that are not part of the HHC alphabet
+    constexpr uint8_t HHC_INVALID_CHAR = 0xFF;
+
     // Create an inverse alphabet for the HHC alphabet
-    // This is used to decode the HHC encoded data
-    // The inverse alphabet is a mapping from the HHC alphabet to the indices of the alphabet
-    constexpr std::array<uint32_t, ALPHABET.back()+1> make_hhc_inverse_alphabet() {
-        std::array<uint32_t, ALPHABET.back()+1> inverse_alphabet{};
+    // This is used to decode the HHC encoded data and to validate input.
+    // The table covers every possible byte value (256 entries) so that any
+    // byte - including ones outside the ASCII range - indexes it safely.
+    // Alphabet bytes map to their index; everything else maps to HHC_INVALID_CHAR.
+    // The alphabet is non-contiguous in ASCII, so membership must come from this
+    // table, not from a range check.
+    constexpr std::array<uint8_t, 256> make_hhc_inverse_alphabet() {
+        std::array<uint8_t, 256> inverse_alphabet{};
+        for (auto& entry : inverse_alphabet) {
+            entry = HHC_INVALID_CHAR;
+        }
         for (uint32_t i = 0; i < BASE; i++) {
-            inverse_alphabet[ALPHABET[i]] = i;
+            inverse_alphabet[static_cast<unsigned char>(ALPHABET[i])] = static_cast<uint8_t>(i);
         }
         return inverse_alphabet;
     }

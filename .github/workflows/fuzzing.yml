@@ -48,7 +48,7 @@ jobs:
       run: |
         # Run fuzzer for 60 seconds with corpus
         mkdir -p corpus
-        ./${{ matrix.target }} corpus -max_total_time=60 -print_final_stats=1 || true
+        ./${{ matrix.target }} corpus -max_total_time=60 -print_final_stats=1
 
     - name: Upload corpus
       if: always()

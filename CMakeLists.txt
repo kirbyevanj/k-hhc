@@ -46,6 +46,15 @@ target_include_directories(k-hhc INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
+# Warnings for project targets that link k-hhc (not third-party deps).
+# BUILD_INTERFACE keeps the flags out of the exported/installed target so
+# downstream consumers are not forced to build with our warning set.
+if(MSVC)
+    target_compile_options(k-hhc INTERFACE $<BUILD_INTERFACE:/W4>)
+else()
+    target_compile_options(k-hhc INTERFACE $<BUILD_INTERFACE:-Wall> $<BUILD_INTERFACE:-Wextra>)
+endif()
+
 # Installation
 install(TARGETS k-hhc EXPORT k-hhcTargets)
 install(DIRECTORY k-hhc/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} FILES_MATCHING PATTERN "*.hpp")

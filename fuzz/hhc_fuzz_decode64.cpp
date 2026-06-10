@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
-#include <string>
 #include <vector>
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -14,13 +14,33 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         std::memcpy(null_terminated_input.data(), data, size);
     }
     null_terminated_input[size] = '\0';
-    
+
     try {
-        (void)hhc::hhc_64bit_decode(null_terminated_input.data());
+        const uint64_t value = hhc::hhc_64bit_decode(null_terminated_input.data());
+
+        // Round-trip oracle: any accepted input must decode to a value whose
+        // canonical re-encodings decode back to the same value
+        char unpadded[hhc::HHC_64BIT_STRING_LENGTH] = {};
+        hhc::hhc_64bit_encode_unpadded(value, unpadded);
+        if (hhc::hhc_64bit_decode(unpadded) != value) {
+            __builtin_trap();
+        }
+
+        char padded[hhc::HHC_64BIT_STRING_LENGTH] = {};
+        hhc::hhc_64bit_encode_padded(value, padded);
+        if (hhc::hhc_64bit_decode(padded) != value ||
+            hhc::hhc_64bit_decode_unsafe(padded) != value) {
+            __builtin_trap();
+        }
     } catch (const std::exception&) {
         /* Expected - invalid inputs should throw */
     }
-    
+
+    // The unsafe decoder must be memory-safe for arbitrary bytes (the value is
+    // garbage by contract, but reads must stay in bounds)
+    if (size >= hhc::HHC_64BIT_ENCODED_LENGTH) {
+        (void)hhc::hhc_64bit_decode_unsafe(null_terminated_input.data());
+    }
+
     return 0;
 }
-

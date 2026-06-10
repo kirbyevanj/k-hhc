@@ -5,6 +5,10 @@ PYBIND11_INCLUDES := $(shell $(PYTHON) -m pybind11 --includes)
 INSTALL_DIR := $(shell $(PYTHON) -c 'import sysconfig;print(sysconfig.get_path("platlib"))')
 UNAME_S := $(shell uname -s 2>/dev/null || echo)
 
+# Header-only library (python/k-hhc is a symlink to ../k-hhc)
+K_HHC_DIR := ../k-hhc
+K_HHC_INC := -I$(K_HHC_DIR)
+
 ifeq ($(origin CXX), undefined)
   ifneq ($(shell command -v clang++ >/dev/null 2>&1 && echo y),)
     CXX := clang++

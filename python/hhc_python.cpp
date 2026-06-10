@@ -1,6 +1,6 @@
 // Build note:
 // - Compile as C++ with the CPython Limited API (abi3).
-// - Define Py_LIMITED_API to the minimum Python 3 version you want to support (e.g., 0x03090000 for 3.9+).
+// - Define Py_LIMITED_API to the minimum Python 3 version you want to support (e.g., 0x03070000 for 3.7+).
 //
 // Limited API (PEP 384) extension to produce abi3-compatible wheels.
 
@@ -83,7 +83,7 @@ static void translate_std_exception() {
  */
 static PyObject* k_hhc_encode_padded_32bit(PyObject*, PyObject* arg) {
     uint64_t v = PyLong_AsUnsignedLongLong(arg);
-    if (v == numeric_limits<uint32_t>::max() && PyErr_Occurred()) {
+    if (v == numeric_limits<uint64_t>::max() && PyErr_Occurred()) {
         return nullptr;
     }
     if (v > 0xFFFFFFFFULL) {
@@ -109,7 +109,7 @@ static PyObject* k_hhc_encode_padded_32bit(PyObject*, PyObject* arg) {
  */
 static PyObject* k_hhc_encode_unpadded_32bit(PyObject*, PyObject* arg) {
     uint64_t v = PyLong_AsUnsignedLongLong(arg);
-    if (v == numeric_limits<uint32_t>::max() && PyErr_Occurred()) {
+    if (v == numeric_limits<uint64_t>::max() && PyErr_Occurred()) {
         return nullptr;
     }
     if (v > 0xFFFFFFFFULL) {
@@ -153,7 +153,7 @@ static PyObject* k_hhc_decode_32bit(PyObject*, PyObject* arg) {
 
     try {
         uint32_t decoded = hhc_32bit_decode(s);
-        return PyLong_FromUnsignedLong((unsigned long)decoded);
+        return PyLong_FromUnsignedLongLong((unsigned long long)decoded);
     } catch (...) {
         translate_std_exception();
         return nullptr;
@@ -190,6 +190,9 @@ static PyObject* k_hhc_encode_padded_64bit(PyObject*, PyObject* arg) {
  */
 static PyObject* k_hhc_encode_unpadded_64bit(PyObject* /*self*/, PyObject* arg) {
     uint64_t v = PyLong_AsUnsignedLongLong(arg);
+    if (v == numeric_limits<uint64_t>::max() && PyErr_Occurred()) {
+        return nullptr;
+    }
 
     try {
         char result[HHC_64BIT_STRING_LENGTH] = {};
@@ -268,7 +271,7 @@ static const char* doc_encode_unpadded_32bit =
     "Args:\n"
     "    value (int): The 32-bit unsigned integer to encode (0 to 4294967295).\n\n"
     "Returns:\n"
-    "    str: A variable-length string without padding (empty string for 0).";
+    "    str: A variable-length string without padding (\"-\" for 0).";
 
 /**
  * Documentation for decode_32bit.
@@ -304,7 +307,7 @@ static const char* doc_encode_unpadded_64bit =
     "Args:\n"
     "    value (int): The 64-bit unsigned integer to encode (0 to 18446744073709551615).\n\n"
     "Returns:\n"
-    "    str: A variable-length string without padding (empty string for 0).";
+    "    str: A variable-length string without padding (\"-\" for 0).";
 
 /**
  * Documentation for decode_64bit.

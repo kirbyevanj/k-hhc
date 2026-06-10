@@ -5,15 +5,15 @@
 #include <stdexcept>
 #include "hhc_constants.hpp"
 #include "hhc_assert.hpp"
-#include <cstring>
 #include <string>
 
 namespace hhc {
 
     /**
      * @brief Encode a 32-bit integer into a 6-character string
-     * @note You must ensure the output string is at least 8 bytes long for performance reasons
-     * @note The output string is not null-terminated
+     * @note Writes exactly HHC_32BIT_ENCODED_LENGTH (6) bytes and does not null-terminate.
+     *       Use a zero-initialized buffer of HHC_32BIT_STRING_LENGTH (8) bytes if a
+     *       null-terminated result is needed.
      * @param input The 32-bit integer to encode
      * @param output_string The output string to write the encoded result to
      */
@@ -29,35 +29,40 @@ namespace hhc {
     }
 
     /**
-     * @brief Unpad a string by replacing the leading '-' characters with ' ' and moving the non-padded content to the beginning
+     * @brief Unpad a string by removing the leading '-' padding characters and moving the significant content to the beginning
      * @note The output string is null-terminated after unpadding
+     * @note A string consisting entirely of padding represents zero and unpads to a single padding character ("-"), so the result always round-trips through decode
      * @param output_string The output string to unpad (must be null-terminated)
      */
     constexpr void hhc_unpad_string(char* output_string) {
         HHC_ASSERT(output_string != nullptr);
 
-        char* start = output_string;
-        while (*output_string == ALPHABET[0] && *output_string != '\0') {
-            *output_string = ' ';
-            output_string++;
+        const char* first_significant = output_string;
+        while (*first_significant == ALPHABET[0]) {
+            ++first_significant;
         }
-        
-        // If we reached the null terminator, all characters were padding
-        if (*output_string == '\0') {
-            start[0] = '\0';
+
+        // All characters were padding: the value is zero, whose canonical
+        // unpadded encoding is a single padding character
+        if (*first_significant == '\0') {
+            if (first_significant != output_string) {
+                output_string[0] = ALPHABET[0];
+                output_string[1] = '\0';
+            }
             return;
         }
-        
-        // Calculate remaining length including null terminator
-        const std::size_t remaining_len = std::strlen(output_string) + 1;
-        
-        // Move the non-padded characters (including null terminator) to the start
-        std::memmove(start, output_string, remaining_len);
+
+        // Move the significant characters (including null terminator) to the
+        // start. Destination never overtakes source, so a forward copy is safe.
+        char* dst = output_string;
+        while ((*dst++ = *first_significant++) != '\0') {
+        }
     }
 
     /**
      * @brief Encode a 32-bit integer into a 6-character string without padding
      * @note The output string is null-terminated after unpadding
+     * @note Zero encodes to a single padding character ("-")
      * @note This version is slower because it needs to unpad the string
      * @param input The 32-bit integer to encode
      * @param output_string The output string to write the encoded result to (must be at least HHC_32BIT_STRING_LENGTH bytes and null-terminated)
@@ -70,18 +75,18 @@ namespace hhc {
 
     /**
      * @brief Decode a 32-bit integer from a 6-character string
-     * @param input_string The input string to decode
+     * @note Performs no validation: non-alphabet bytes produce a garbage value
+     *       (but never out-of-bounds memory access). Use hhc_32bit_decode for
+     *       untrusted input.
+     * @param input_string The input string to decode (must be at least HHC_32BIT_ENCODED_LENGTH bytes)
      * @return The decoded 32-bit integer
      */
     constexpr uint32_t hhc_32bit_decode_unsafe(const char* input_string) {
         HHC_ASSERT(input_string != nullptr);
         uint32_t output = 0;
-        uint32_t exponent = 1;
-
-        for (uint32_t pos = HHC_32BIT_ENCODED_LENGTH; pos > 0; --pos) {
-            const uint32_t index = INVERSE_ALPHABET[input_string[pos-1]];
-            output += index * exponent;
-            exponent *= BASE;
+        for (std::size_t pos = 0; pos < HHC_32BIT_ENCODED_LENGTH; ++pos) {
+            const auto c = static_cast<unsigned char>(input_string[pos]);
+            output = output * BASE + INVERSE_ALPHABET[c];
         }
         return output;
     }
@@ -89,8 +94,9 @@ namespace hhc {
 
     /**
      * @brief Encode a 64-bit integer into a 11-character string
-     * @note You must ensure the output string is at least 16 bytes long for performance reasons
-     * @note The output string is not null-terminated
+     * @note Writes exactly HHC_64BIT_ENCODED_LENGTH (11) bytes and does not null-terminate.
+     *       Use a zero-initialized buffer of HHC_64BIT_STRING_LENGTH (16) bytes if a
+     *       null-terminated result is needed.
      * @param input The 64-bit integer to encode
      * @param output_string The output string to write the encoded result to
      */
@@ -106,6 +112,7 @@ namespace hhc {
     /**
      * @brief Encode a 64-bit integer into a 11-character string without padding
      * @note The output string is null-terminated after unpadding
+     * @note Zero encodes to a single padding character ("-")
      * @note This version is slower because it needs to unpad the string
      * @param input The 64-bit integer to encode
      * @param output_string The output string to write the encoded result to (must be at least HHC_64BIT_STRING_LENGTH bytes and null-terminated)
@@ -118,23 +125,27 @@ namespace hhc {
 
     /**
      * @brief Decode a 64-bit integer from a 11-character string
-     * @param input_string The input string to decode
+     * @note Performs no validation: non-alphabet bytes produce a garbage value
+     *       (but never out-of-bounds memory access). Use hhc_64bit_decode for
+     *       untrusted input.
+     * @param input_string The input string to decode (must be at least HHC_64BIT_ENCODED_LENGTH bytes)
      * @return The decoded 64-bit integer
      */
     constexpr uint64_t hhc_64bit_decode_unsafe(const char* input_string) {
         HHC_ASSERT(input_string != nullptr);
         uint64_t output = 0;
-        uint64_t exponent = 1;
-        for (uint32_t pos = HHC_64BIT_ENCODED_LENGTH; pos > 0; --pos) {
-            const uint32_t index = INVERSE_ALPHABET[input_string[pos-1]];
-            output += static_cast<uint64_t>(index) * exponent;
-            exponent *= BASE;
+        for (std::size_t pos = 0; pos < HHC_64BIT_ENCODED_LENGTH; ++pos) {
+            const auto c = static_cast<unsigned char>(input_string[pos]);
+            output = output * BASE + INVERSE_ALPHABET[c];
         }
         return output;
     }
 
     /**
      * @brief Validate a string to ensure it is a valid HHC string
+     * @note Validity is alphabet membership via INVERSE_ALPHABET, not an ASCII
+     *       range check: the alphabet is non-contiguous, so bytes such as
+     *       '/' ':' '@' '`' '{' fall between alphabet characters and are invalid.
      * @param input_string The input string to validate
      * @return The length of the valid string, 0 if the string is invalid
      */
@@ -146,7 +157,7 @@ namespace hhc {
         const char* const start = input_string;
         while (*input_string != '\0') {
             const auto c = static_cast<unsigned char>(*input_string++);
-            if (c < ALPHABET[0] || c > ALPHABET.back()) {
+            if (INVERSE_ALPHABET[c] == HHC_INVALID_CHAR) {
                 return 0;
             }
         }
@@ -196,14 +207,16 @@ namespace hhc {
 
         // If the string is not padded, pad it (no bounds check needed - shorter strings are always valid)
         if (length < HHC_32BIT_ENCODED_LENGTH) {
-            char padded_string[HHC_32BIT_STRING_LENGTH] = {};  // Initialize to all zeros
+            char padded_string[HHC_32BIT_STRING_LENGTH] = {};  // Zero-init also null-terminates
             const std::size_t padding = HHC_32BIT_ENCODED_LENGTH - length;
 
-            HHC_ASSERT(padding <= HHC_32BIT_STRING_LENGTH);
-            std::memset(padded_string, ALPHABET[0], padding);
-            std::memcpy(padded_string + padding, input_string, length);
-            padded_string[HHC_32BIT_ENCODED_LENGTH] = '\0';
-            
+            for (std::size_t i = 0; i < padding; ++i) {
+                padded_string[i] = ALPHABET[0];
+            }
+            for (std::size_t i = 0; i < length; ++i) {
+                padded_string[padding + i] = input_string[i];
+            }
+
             return hhc_32bit_decode_unsafe(padded_string);
         }
 
@@ -234,14 +247,16 @@ namespace hhc {
 
         // If the string is not padded, pad it (no bounds check needed - shorter strings are always valid)
         if (length < HHC_64BIT_ENCODED_LENGTH) {
-            char padded_string[HHC_64BIT_STRING_LENGTH] = {};  // Initialize to all zeros
+            char padded_string[HHC_64BIT_STRING_LENGTH] = {};  // Zero-init also null-terminates
             const std::size_t padding = HHC_64BIT_ENCODED_LENGTH - length;
 
-            HHC_ASSERT(padding <= HHC_64BIT_STRING_LENGTH);
-            std::memset(padded_string, ALPHABET[0], padding);
-            std::memcpy(padded_string + padding, input_string, length);
-            padded_string[HHC_64BIT_ENCODED_LENGTH] = '\0';
-            
+            for (std::size_t i = 0; i < padding; ++i) {
+                padded_string[i] = ALPHABET[0];
+            }
+            for (std::size_t i = 0; i < length; ++i) {
+                padded_string[padding + i] = input_string[i];
+            }
+
             return hhc_64bit_decode_unsafe(padded_string);
         }
 
